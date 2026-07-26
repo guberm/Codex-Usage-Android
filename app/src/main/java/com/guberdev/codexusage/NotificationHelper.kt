@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.Icon
 import android.os.Build
 
 object NotificationHelper {
@@ -47,7 +48,11 @@ object NotificationHelper {
         val text = status ?: snapshot?.let { "Reset: ${UsageText.resetDate(reset)}" }
             ?: "Waiting for the first check"
         return Notification.Builder(context, MONITOR_CHANNEL)
-            .setSmallIcon(R.drawable.ic_stat_usage)
+            .setSmallIcon(
+                snapshot?.let {
+                    UsagePercentIcon.create(context, it.primary.remainingPercent)
+                } ?: Icon.createWithResource(context, R.drawable.ic_stat_usage),
+            )
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(mainPendingIntent(context))
@@ -67,7 +72,7 @@ object NotificationHelper {
         createChannels(context)
         val sign = if (delta > 0) "+" else "−"
         val notification = Notification.Builder(context, CHANGE_CHANNEL)
-            .setSmallIcon(R.drawable.ic_stat_usage)
+            .setSmallIcon(UsagePercentIcon.create(context, snapshot.primary.remainingPercent))
             .setContentTitle("Codex Usage: $sign${kotlin.math.abs(delta)}%")
             .setContentText(
                 "${snapshot.primary.remainingPercent}% remaining • " +

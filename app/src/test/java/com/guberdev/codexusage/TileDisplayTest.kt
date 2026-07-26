@@ -1,0 +1,11 @@
+package com.guberdev.codexusage
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class TileDisplayTest {
+    @Test
+    fun `tile renders the remaining percentage`() {
+        assertEquals("42%", TileDisplay.percent(42))
+    }
+}

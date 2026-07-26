@@ -2,11 +2,47 @@ package com.guberdev.codexusage
 
 import android.annotation.SuppressLint
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import kotlin.math.roundToInt
+
+object TileDisplay {
+    fun percent(remainingPercent: Int): String = "${remainingPercent.coerceIn(0, 100)}%"
+}
+
+object UsagePercentIcon {
+    fun create(context: Context, remainingPercent: Int): Icon {
+        val size = (48 * context.resources.displayMetrics.density).roundToInt().coerceAtLeast(48)
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = size * 0.07f
+        }
+        val center = size / 2f
+        canvas.drawCircle(center, center, center - paint.strokeWidth, paint)
+
+        val text = TileDisplay.percent(remainingPercent)
+        paint.apply {
+            style = Paint.Style.FILL
+            textAlign = Paint.Align.CENTER
+            textSize = size * if (text.length > 3) 0.27f else 0.33f
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        canvas.drawText(text, center, center - (paint.ascent() + paint.descent()) / 2f, paint)
+        return Icon.createWithBitmap(bitmap)
+    }
+}
 
 class CodexUsageTileService : TileService() {
     override fun onStartListening() {
@@ -32,9 +68,13 @@ class CodexUsageTileService : TileService() {
     private fun render() {
         val snapshot = UsageStore(this).load()
         qsTile?.apply {
-            icon = Icon.createWithResource(this@CodexUsageTileService, R.drawable.ic_stat_usage)
+            icon = snapshot?.let {
+                UsagePercentIcon.create(this@CodexUsageTileService, it.primary.remainingPercent)
+            } ?: Icon.createWithResource(this@CodexUsageTileService, R.drawable.ic_stat_usage)
             state = if (snapshot == null) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
-            label = snapshot?.let { "Codex • ${it.primary.remainingPercent}% remaining" } ?: "Codex Usage"
+            label = snapshot?.let {
+                "Codex ${TileDisplay.percent(it.primary.remainingPercent)}"
+            } ?: "Codex Usage"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 subtitle = snapshot?.let {
                     "Resets ${UsageText.shortResetDate(it.primary.resetAtEpochSeconds)}"
