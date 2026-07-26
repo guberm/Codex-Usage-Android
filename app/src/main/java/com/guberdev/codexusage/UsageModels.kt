@@ -120,7 +120,8 @@ data class JwtClaims(
             val auth = json.optJSONObject("https://api.openai.com/auth")
             return JwtClaims(
                 accountId = auth?.optionalString("chatgpt_account_id"),
-                email = json.optionalString("email"),
+                email = json.optionalString("email")
+                    ?: json.optJSONObject("https://api.openai.com/profile")?.optionalString("email"),
                 expiresAtEpochSeconds = json.optLong("exp").takeIf { it > 0 },
             )
         }

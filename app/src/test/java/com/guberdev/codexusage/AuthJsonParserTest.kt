@@ -72,6 +72,21 @@ class AuthJsonParserTest {
         assertEquals("Signed in with michael@example.com", tokens.signedInText())
     }
 
+    @Test
+    fun `signed in label uses the OpenAI profile email`() {
+        val tokens = SessionTokens(
+            idToken = jwt(
+                """{"https://api.openai.com/profile":{"email":"profile@example.com"}}""",
+            ),
+            accessToken = jwt("""{"exp":2100000000}"""),
+            refreshToken = "refresh-1",
+            accountId = "workspace-123",
+            accessTokenExpiresAtEpochSeconds = 2100000000L,
+        )
+
+        assertEquals("Signed in with profile@example.com", tokens.signedInText())
+    }
+
     private fun jwt(payload: String): String {
         val encoder = Base64.getUrlEncoder().withoutPadding()
         val header = encoder.encodeToString("""{"alg":"none"}""".toByteArray())
