@@ -11,6 +11,11 @@ class TileDisplayTest {
 
     @Test
     fun `system percentage icon uses the larger text scale`() {
-        assertEquals(0.44f, TileDisplay.textScale(42))
+        assertEquals(0.50f, TileDisplay.textScale(42))
+    }
+
+    @Test
+    fun `three digit percentage remains large enough`() {
+        assertEquals(0.39f, TileDisplay.textScale(100))
     }
 }

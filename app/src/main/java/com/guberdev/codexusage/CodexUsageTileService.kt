@@ -19,7 +19,7 @@ object TileDisplay {
     fun percent(remainingPercent: Int): String = "${remainingPercent.coerceIn(0, 100)}%"
 
     fun textScale(remainingPercent: Int): Float =
-        if (percent(remainingPercent).length > 3) 0.34f else 0.44f
+        if (percent(remainingPercent).length > 3) 0.39f else 0.50f
 }
 
 object UsagePercentIcon {
