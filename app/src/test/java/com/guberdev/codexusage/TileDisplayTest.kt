@@ -10,12 +10,19 @@ class TileDisplayTest {
     }
 
     @Test
-    fun `system percentage icon uses the larger text scale`() {
-        assertEquals(0.50f, TileDisplay.textScale(42))
+    fun `system icon separates the number from the percent sign`() {
+        assertEquals("53", TileDisplay.iconNumber(53))
     }
 
     @Test
-    fun `three digit percentage remains large enough`() {
-        assertEquals(0.39f, TileDisplay.textScale(100))
+    fun `system icon number fills the available height`() {
+        assertEquals(0.72f, TileDisplay.textScale(53))
+        assertEquals(0.48f, TileDisplay.textScale(100))
+    }
+
+    @Test
+    fun `system icon uses a compact superscript percent sign`() {
+        assertEquals(0.24f, TileDisplay.percentScale(53))
+        assertEquals(0.18f, TileDisplay.percentScale(100))
     }
 }
