@@ -32,9 +32,9 @@ class UsageParser {
         try {
             val root = JSONObject(json)
             val rateLimit = root.optJSONObject("rate_limit")
-                ?: throw UsageParseException("Ответ Codex не содержит основной лимит")
+                ?: throw UsageParseException("The Codex response does not contain a primary limit")
             val primaryWindow = rateLimit.optJSONObject("primary_window")
-                ?: throw UsageParseException("Ответ Codex не содержит окно лимита")
+                ?: throw UsageParseException("The Codex response does not contain a limit window")
 
             return UsageSnapshot(
                 planType = root.optionalString("plan_type"),
@@ -45,13 +45,13 @@ class UsageParser {
         } catch (error: UsageParseException) {
             throw error
         } catch (error: JSONException) {
-            throw UsageParseException("Не удалось прочитать ответ Codex", error)
+            throw UsageParseException("Could not read the Codex response", error)
         }
     }
 
     private fun parseWindow(json: JSONObject): UsageWindow {
         if (!json.has("used_percent")) {
-            throw UsageParseException("В окне лимита отсутствует used_percent")
+            throw UsageParseException("The limit window does not contain used_percent")
         }
         val remaining = (100.0 - json.getDouble("used_percent"))
             .roundToInt()
@@ -113,7 +113,7 @@ data class JwtClaims(
     companion object {
         fun parse(jwt: String): JwtClaims {
             val parts = jwt.split('.')
-            require(parts.size >= 3) { "Некорректный OAuth token" }
+            require(parts.size >= 3) { "Invalid OAuth token" }
             val payload = String(Base64.getUrlDecoder().decode(parts[1]))
             val json = JSONObject(payload)
             val auth = json.optJSONObject("https://api.openai.com/auth")

@@ -34,16 +34,16 @@ class CodexUsageTileService : TileService() {
         qsTile?.apply {
             icon = Icon.createWithResource(this@CodexUsageTileService, R.drawable.ic_stat_usage)
             state = if (snapshot == null) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
-            label = snapshot?.let { "Codex • ${it.primary.remainingPercent}% осталось" } ?: "Codex Usage"
+            label = snapshot?.let { "Codex • ${it.primary.remainingPercent}% remaining" } ?: "Codex Usage"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 subtitle = snapshot?.let {
-                    "Сброс ${UsageText.shortResetDate(it.primary.resetAtEpochSeconds)}"
-                } ?: "Нажмите для входа"
+                    "Resets ${UsageText.shortResetDate(it.primary.resetAtEpochSeconds)}"
+                } ?: "Tap to sign in"
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 stateDescription = snapshot?.let {
-                    "${it.primary.remainingPercent}% осталось, сброс ${UsageText.resetDate(it.primary.resetAtEpochSeconds)}"
-                } ?: "Требуется вход"
+                    "${it.primary.remainingPercent}% remaining, resets ${UsageText.resetDate(it.primary.resetAtEpochSeconds)}"
+                } ?: "Sign-in required"
             }
             updateTile()
         }

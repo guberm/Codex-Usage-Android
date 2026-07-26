@@ -18,7 +18,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.text.format.DateUtils
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
@@ -91,7 +90,7 @@ class MainActivity : Activity() {
         )
         root.addView(title("Codex Usage"))
         root.addView(
-            bodyText("Неофициальный companion для OpenAI Codex", Color.rgb(173, 216, 230)).apply {
+            bodyText("Unofficial companion for OpenAI Codex", Color.rgb(173, 216, 230)).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
             },
         )
@@ -106,7 +105,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_HORIZONTAL
         }
         usageCard.addView(percentText)
-        usageCard.addView(bodyText("осталось", Color.DKGRAY).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        usageCard.addView(bodyText("remaining", Color.DKGRAY).apply { gravity = Gravity.CENTER_HORIZONTAL })
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
             progress = 0
@@ -118,9 +117,9 @@ class MainActivity : Activity() {
                 bottomMargin = dp(14)
             },
         )
-        resetText = bodyText("Сброс: —", Color.rgb(30, 40, 60))
-        updatedText = bodyText("Ещё не обновлялось", Color.GRAY)
-        statusText = bodyText("Войдите через ChatGPT", Color.rgb(0, 105, 115))
+        resetText = bodyText("Reset: —", Color.rgb(30, 40, 60))
+        updatedText = bodyText("Not updated yet", Color.GRAY)
+        statusText = bodyText("Sign in with ChatGPT", Color.rgb(0, 105, 115))
         usageCard.addView(resetText)
         usageCard.addView(updatedText)
         usageCard.addView(statusText)
@@ -136,7 +135,7 @@ class MainActivity : Activity() {
         checkSpinner.adapter = ArrayAdapter(
             this,
             android.R.layout.simple_spinner_dropdown_item,
-            MonitorSettingsStore.CHECK_HOUR_OPTIONS.map { "$it ч." },
+            MonitorSettingsStore.CHECK_HOUR_OPTIONS.map { if (it == 1) "1 hour" else "$it hours" },
         )
         settingsCard.addView(checkSpinner)
         settingsCard.addView(bodyText("Notify every", Color.DKGRAY))
@@ -149,13 +148,13 @@ class MainActivity : Activity() {
         settingsCard.addView(notifySpinner)
         settingsCard.addView(
             Button(this).apply {
-                text = "Сохранить настройки"
+                text = "Save settings"
                 setOnClickListener { saveSettings() }
             },
         )
         settingsCard.addView(
             bodyText(
-                "По умолчанию: проверка каждый 1 час, уведомление при изменении ±1%.",
+                "Default: check every hour and notify on a ±1% change.",
                 Color.GRAY,
             ),
         )
@@ -163,8 +162,8 @@ class MainActivity : Activity() {
         root.addView(spacer(14))
 
         codePanel = card().apply { visibility = View.GONE }
-        codePanel.addView(sectionTitle("Вход через ChatGPT"))
-        codePanel.addView(bodyText("Одноразовый код:", Color.DKGRAY))
+        codePanel.addView(sectionTitle("Sign in with ChatGPT"))
+        codePanel.addView(bodyText("One-time code:", Color.DKGRAY))
         codeText = TextView(this).apply {
             textSize = 30f
             setTextColor(Color.rgb(7, 18, 47))
@@ -175,7 +174,7 @@ class MainActivity : Activity() {
         codePanel.addView(codeText)
         codePanel.addView(
             Button(this).apply {
-                text = "Скопировать код и открыть ChatGPT"
+                text = "Copy code and open ChatGPT"
                 setOnClickListener {
                     pendingDeviceCode?.let { openDeviceLogin(it) }
                 }
@@ -184,19 +183,19 @@ class MainActivity : Activity() {
         root.addView(codePanel)
         root.addView(spacer(14))
 
-        loginButton = actionButton("Войти через ChatGPT") { startDeviceLogin() }
-        refreshButton = actionButton("Обновить сейчас") { refreshNow() }
+        loginButton = actionButton("Sign in with ChatGPT") { startDeviceLogin() }
+        refreshButton = actionButton("Refresh now") { refreshNow() }
         root.addView(loginButton)
         root.addView(refreshButton)
-        root.addView(actionButton("Добавить плитку Quick Settings") { requestTile() })
-        logoutButton = actionButton("Выйти") { confirmLogout() }
+        root.addView(actionButton("Add Quick Settings tile") { requestTile() })
+        logoutButton = actionButton("Sign out") { confirmLogout() }
         root.addView(logoutButton)
 
         return ScrollView(this).apply { addView(root) }
     }
 
     private fun startDeviceLogin() {
-        setBusy("Запрашиваю код входа…")
+        setBusy("Requesting sign-in code…")
         executor.execute {
             try {
                 val client = CodexAuthClient()
@@ -205,7 +204,7 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     codeText.text = code.userCode
                     codePanel.visibility = View.VISIBLE
-                    statusText.text = "Завершите вход в браузере"
+                    statusText.text = "Complete sign-in in your browser"
                     openDeviceLogin(code)
                 }
 
@@ -215,13 +214,13 @@ class MainActivity : Activity() {
                     Thread.sleep(code.intervalSeconds * 1000L)
                     pending = client.pollDeviceCode(code)
                 }
-                if (pending == null) error("Код входа истёк. Попробуйте снова.")
+                if (pending == null) error("The code expired. Try again.")
                 val tokens = client.exchangeCode(pending)
                 SecureTokenStore(this).save(tokens)
                 if (!destroyed) {
                     runOnUiThread {
                         codePanel.visibility = View.GONE
-                        statusText.text = "Вход выполнен. Обновляю Usage…"
+                        statusText.text = "Signed in. Refreshing usage…"
                         UsageMonitorService.start(this)
                         UsageBackupJobService.schedule(this)
                         refreshNow()
@@ -231,7 +230,7 @@ class MainActivity : Activity() {
                 Thread.currentThread().interrupt()
             } catch (error: Throwable) {
                 if (!destroyed) runOnUiThread {
-                    setBusy(error.message?.take(160) ?: "Не удалось войти", busy = false)
+                    setBusy(error.message?.take(160) ?: "Could not sign in", busy = false)
                 }
             }
         }
@@ -241,19 +240,19 @@ class MainActivity : Activity() {
         getSystemService(ClipboardManager::class.java)
             .setPrimaryClip(ClipData.newPlainText("Codex device code", code.userCode))
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(code.verificationUrl)))
-        Toast.makeText(this, "Код скопирован", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Code copied", Toast.LENGTH_SHORT).show()
     }
 
     private fun refreshNow() {
-        setBusy("Обновляю…")
+        setBusy("Refreshing…")
         RefreshCoordinator.refresh(this) { result ->
             when (result) {
                 is RefreshResult.Success -> {
                     render(result.snapshot)
                     statusText.text = result.delta?.let {
                         val sign = if (it > 0) "+" else ""
-                        "Обновлено • изменение $sign$it%"
-                    } ?: "Обновлено"
+                        "Updated • change $sign$it%"
+                    } ?: "Updated"
                 }
                 is RefreshResult.Error -> statusText.text = result.message
             }
@@ -269,25 +268,21 @@ class MainActivity : Activity() {
         if (snapshot == null) {
             percentText.text = "—"
             progress.progress = 0
-            resetText.text = "Сброс: —"
-            updatedText.text = "Ещё не обновлялось"
+            resetText.text = "Reset: —"
+            updatedText.text = "Not updated yet"
             additionalContainer.removeAllViews()
             return
         }
         percentText.text = "${snapshot.primary.remainingPercent}%"
         progress.progress = snapshot.primary.remainingPercent
-        resetText.text = "Сброс: ${UsageText.resetDate(snapshot.primary.resetAtEpochSeconds)}"
-        updatedText.text = "Обновлено " + DateUtils.getRelativeTimeSpanString(
-            snapshot.fetchedAtEpochMillis,
-            System.currentTimeMillis(),
-            DateUtils.MINUTE_IN_MILLIS,
-        )
+        resetText.text = "Reset: ${UsageText.resetDate(snapshot.primary.resetAtEpochSeconds)}"
+        updatedText.text = "Updated ${UsageText.resetDate(snapshot.fetchedAtEpochMillis / 1000L)}"
         additionalContainer.removeAllViews()
         snapshot.additionalLimits.forEach { limit ->
             additionalContainer.addView(
                 bodyText(
                     "${UsageText.featureName(limit.feature)}: ${limit.window.remainingPercent}% • " +
-                        "сброс ${UsageText.resetDate(limit.window.resetAtEpochSeconds)}",
+                        "resets ${UsageText.resetDate(limit.window.resetAtEpochSeconds)}",
                     Color.rgb(30, 40, 60),
                 ),
             )
@@ -317,7 +312,7 @@ class MainActivity : Activity() {
         UsageMonitorService.restart(this)
         Toast.makeText(
             this,
-            "Проверка: ${settings.checkEveryHours} ч., уведомление: ${settings.notifyEveryPercent}%",
+            "Check: ${settings.checkEveryHours} hr, notify: ${settings.notifyEveryPercent}%",
             Toast.LENGTH_SHORT,
         ).show()
     }
@@ -331,29 +326,29 @@ class MainActivity : Activity() {
                 Icon.createWithResource(this, R.drawable.ic_stat_usage),
                 mainExecutor,
             ) { result ->
-                Toast.makeText(this, "Результат добавления плитки: $result", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Tile request result: $result", Toast.LENGTH_SHORT).show()
             }
         } else {
             val quickSettingsIntent = Intent("android.settings.QUICK_SETTINGS_SETTINGS")
             val fallback = Intent(Settings.ACTION_SETTINGS)
             runCatching { startActivity(quickSettingsIntent) }
                 .onFailure { startActivity(fallback) }
-            Toast.makeText(this, "Перетащите плитку Codex Usage в активные", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Drag the Codex Usage tile into active tiles", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun confirmLogout() {
         AlertDialog.Builder(this)
-            .setTitle("Выйти из Codex Usage?")
-            .setMessage("OAuth‑токены будут удалены только с этого телефона.")
-            .setNegativeButton("Отмена", null)
-            .setPositiveButton("Выйти") { _, _ ->
+            .setTitle("Sign out of Codex Usage?")
+            .setMessage("OAuth tokens will be removed only from this phone.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Sign out") { _, _ ->
                 UsageMonitorService.stop(this)
                 UsageBackupJobService.cancel(this)
                 SecureTokenStore(this).clear()
                 UsageStore(this).clear()
                 render(null)
-                statusText.text = "Выполнен выход"
+                statusText.text = "Signed out"
             }
             .show()
     }

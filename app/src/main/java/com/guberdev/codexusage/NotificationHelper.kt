@@ -24,7 +24,7 @@ object NotificationHelper {
                 "Codex Usage monitor",
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "Постоянный статус фонового мониторинга Codex Usage"
+                description = "Persistent Codex Usage background monitoring status"
                 setShowBadge(false)
             },
         )
@@ -34,18 +34,18 @@ object NotificationHelper {
                 "Codex Usage changes",
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Изменения оставшегося лимита Codex"
+                description = "Changes to the remaining Codex usage limit"
             },
         )
     }
 
     fun monitorNotification(context: Context, snapshot: UsageSnapshot?, status: String? = null): Notification {
         createChannels(context)
-        val title = snapshot?.let { "Codex Usage: ${it.primary.remainingPercent}% осталось" }
+        val title = snapshot?.let { "Codex Usage: ${it.primary.remainingPercent}% remaining" }
             ?: "Codex Usage monitor"
         val reset = snapshot?.primary?.resetAtEpochSeconds
-        val text = status ?: snapshot?.let { "Сброс: ${UsageText.resetDate(reset)}" }
-            ?: "Ожидание первой проверки"
+        val text = status ?: snapshot?.let { "Reset: ${UsageText.resetDate(reset)}" }
+            ?: "Waiting for the first check"
         return Notification.Builder(context, MONITOR_CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_usage)
             .setContentTitle(title)
@@ -70,8 +70,8 @@ object NotificationHelper {
             .setSmallIcon(R.drawable.ic_stat_usage)
             .setContentTitle("Codex Usage: $sign${kotlin.math.abs(delta)}%")
             .setContentText(
-                "Осталось ${snapshot.primary.remainingPercent}% • " +
-                    "сброс ${UsageText.resetDate(snapshot.primary.resetAtEpochSeconds)}",
+                "${snapshot.primary.remainingPercent}% remaining • " +
+                    "resets ${UsageText.resetDate(snapshot.primary.resetAtEpochSeconds)}",
             )
             .setContentIntent(mainPendingIntent(context))
             .setAutoCancel(true)

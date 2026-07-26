@@ -1,12 +1,30 @@
 package com.guberdev.codexusage
 
 import java.net.HttpURLConnection
+import java.net.UnknownHostException
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import org.json.JSONObject
 
 class HttpStatusException(val statusCode: Int) : Exception("HTTP $statusCode")
+
+internal fun <T> retryUnknownHost(
+    maxAttempts: Int = 3,
+    delayMillis: Long = 1_000,
+    action: () -> T,
+): T {
+    require(maxAttempts > 0)
+    for (attempt in 1..maxAttempts) {
+        try {
+            return action()
+        } catch (error: UnknownHostException) {
+            if (attempt == maxAttempts) throw error
+            if (delayMillis > 0) Thread.sleep(delayMillis * attempt)
+        }
+    }
+    error("Unreachable")
+}
 
 private object CodexHttp {
     fun request(
@@ -15,14 +33,14 @@ private object CodexHttp {
         body: String? = null,
         contentType: String? = null,
         headers: Map<String, String> = emptyMap(),
-    ): String {
+    ): String = retryUnknownHost {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = 15_000
             readTimeout = 20_000
             useCaches = false
             setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "codex-usage-android/0.1.0")
+            setRequestProperty("User-Agent", "codex-usage-android/0.1.1")
             headers.forEach { (name, value) -> setRequestProperty(name, value) }
             if (body != null) {
                 doOutput = true
@@ -38,7 +56,7 @@ private object CodexHttp {
                 connection.errorStream?.close()
                 throw HttpStatusException(status)
             }
-            return connection.inputStream.bufferedReader().use { it.readText() }
+            connection.inputStream.bufferedReader().use { it.readText() }
         } finally {
             connection.disconnect()
         }

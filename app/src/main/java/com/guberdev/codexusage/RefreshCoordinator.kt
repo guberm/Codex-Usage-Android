@@ -21,7 +21,7 @@ object RefreshCoordinator {
     fun refresh(context: Context, callback: ((RefreshResult) -> Unit)? = null) {
         val appContext = context.applicationContext
         if (!refreshing.compareAndSet(false, true)) {
-            callback?.let { mainHandler.post { it(RefreshResult.Error("Обновление уже выполняется")) } }
+            callback?.let { mainHandler.post { it(RefreshResult.Error("A refresh is already in progress")) } }
             return
         }
         executor.execute {
@@ -36,7 +36,7 @@ object RefreshCoordinator {
     private fun refreshBlocking(context: Context): RefreshResult {
         val tokenStore = SecureTokenStore(context)
         val originalTokens = tokenStore.load()
-            ?: return RefreshResult.Error("Войдите через ChatGPT")
+            ?: return RefreshResult.Error("Sign in with ChatGPT")
         val authClient = CodexAuthClient()
         var tokens = authClient.ensureFresh(originalTokens)
         if (tokens != originalTokens) tokenStore.save(tokens)
@@ -67,12 +67,12 @@ object RefreshCoordinator {
 
     private fun friendlyMessage(error: Throwable): String = when (error) {
         is HttpStatusException -> when (error.statusCode) {
-            401, 403 -> "Сессия ChatGPT истекла. Войдите снова."
-            429 -> "Слишком много запросов. Попробуйте позже."
-            else -> "Codex Usage недоступен (HTTP ${error.statusCode})"
+            401, 403 -> "Your ChatGPT session expired. Sign in again."
+            429 -> "Too many requests. Try again later."
+            else -> "Codex Usage is unavailable (HTTP ${error.statusCode})"
         }
-        is java.net.SocketTimeoutException -> "Codex Usage не ответил вовремя"
-        is java.io.IOException -> "Нет соединения с Codex Usage"
-        else -> error.message?.take(160) ?: "Не удалось обновить Codex Usage"
+        is java.net.SocketTimeoutException -> "Codex Usage timed out"
+        is java.io.IOException -> "Could not connect to Codex Usage"
+        else -> error.message?.take(160) ?: "Could not refresh Codex Usage"
     }
 }

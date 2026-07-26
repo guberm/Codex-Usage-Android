@@ -3,6 +3,7 @@ package com.guberdev.codexusage
 import android.content.Context
 import java.text.DateFormat
 import java.util.Date
+import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -124,13 +125,13 @@ class MonitorSettingsStore(context: Context) {
 object UsageText {
     fun resetDate(epochSeconds: Long?): String =
         epochSeconds?.let {
-            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, Locale.ENGLISH)
                 .format(Date(it * 1000L))
-        } ?: "не указан"
+        } ?: "not specified"
 
     fun shortResetDate(epochSeconds: Long?): String =
         epochSeconds?.let {
-            DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+            DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.ENGLISH)
                 .format(Date(it * 1000L))
         } ?: "—"
 
