@@ -59,7 +59,7 @@ private object CodexHttp {
             readTimeout = 20_000
             useCaches = false
             setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "codex-usage-android/0.1.7")
+            setRequestProperty("User-Agent", "codex-usage-android/0.1.8")
             headers.forEach { (name, value) -> setRequestProperty(name, value) }
             if (body != null) {
                 doOutput = true

@@ -18,13 +18,10 @@ import kotlin.math.roundToInt
 object TileDisplay {
     fun percent(remainingPercent: Int): String = "${remainingPercent.coerceIn(0, 100)}%"
 
-    fun iconNumber(remainingPercent: Int): String = remainingPercent.coerceIn(0, 100).toString()
+    fun iconText(remainingPercent: Int): String = percent(remainingPercent)
 
     fun textScale(remainingPercent: Int): Float =
-        if (iconNumber(remainingPercent).length > 2) 0.48f else 0.72f
-
-    fun percentScale(remainingPercent: Int): Float =
-        if (iconNumber(remainingPercent).length > 2) 0.18f else 0.24f
+        if (iconText(remainingPercent).length > 3) 0.56f else 0.72f
 }
 
 object UsagePercentIcon {
@@ -32,29 +29,17 @@ object UsagePercentIcon {
         val size = (48 * context.resources.displayMetrics.density).roundToInt().coerceAtLeast(48)
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val number = TileDisplay.iconNumber(remainingPercent)
-        val numberPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val text = TileDisplay.iconText(remainingPercent)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             style = Paint.Style.FILL
-            textAlign = Paint.Align.LEFT
+            textAlign = Paint.Align.CENTER
             textSize = size * TileDisplay.textScale(remainingPercent)
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
         }
-        val percentPaint = Paint(numberPaint).apply {
-            textSize = size * TileDisplay.percentScale(remainingPercent)
-        }
-        val overlap = size * 0.015f
-        val numberWidth = numberPaint.measureText(number)
-        val totalWidth = numberWidth + percentPaint.measureText("%") - overlap
-        val numberX = (size - totalWidth) / 2f
-        val baseline = size / 2f - (numberPaint.ascent() + numberPaint.descent()) / 2f
-        canvas.drawText(number, numberX, baseline, numberPaint)
-        canvas.drawText(
-            "%",
-            numberX + numberWidth - overlap,
-            baseline + numberPaint.ascent() * 0.34f,
-            percentPaint,
-        )
+        paint.textScaleX = (size * 0.94f / paint.measureText(text)).coerceAtMost(1f)
+        val center = size / 2f
+        canvas.drawText(text, center, center - (paint.ascent() + paint.descent()) / 2f, paint)
         return Icon.createWithBitmap(bitmap)
     }
 }

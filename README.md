@@ -1,37 +1,38 @@
 # Codex Usage for Android
 
-Неофициальный Android companion для отслеживания лимитов OpenAI Codex.
+An unofficial Android companion for tracking OpenAI Codex usage limits.
 
-## Возможности
+## Features
 
-- оставшийся процент основного Codex Usage limit;
-- дата и локальное время следующего reset;
-- дополнительные лимиты (например GPT‑5.3‑Codex‑Spark), если они есть в аккаунте;
-- Quick Settings tile: тап запускает немедленный refresh;
-- постоянный foreground monitor с восстановлением после перезагрузки;
-- резервная периодическая задача Android;
-- уведомления при изменении оставшегося лимита;
-- настройки `Check every` (1/2/4/6/12/24 часа) и `Notify every` (1/2/5/10/20%);
-- безопасный ChatGPT device login без API key и без копирования browser cookies.
+- remaining percentage for the primary Codex usage limit;
+- date and local time of the next reset;
+- additional limits, such as GPT-5.3-Codex-Spark, when available for the account;
+- Quick Settings tile with tap-to-refresh;
+- persistent foreground monitoring that resumes after a device restart;
+- a backup periodic Android job;
+- notifications when the remaining limit changes;
+- `Check every` settings of 1/2/4/6/12/24 hours;
+- `Notify every` settings of 1/2/5/10/20%;
+- secure ChatGPT device login without an API key or copied browser cookies.
 
-Значения по умолчанию: проверка каждый час, уведомление при изменении `±1%`.
+Defaults: check every hour and notify on a `±1%` change.
 
-## Вход и безопасность
+## Sign-in and security
 
-Приложение использует device‑authorization flow Codex и получает данные из того же
-ChatGPT endpoint, который использует Codex CLI:
+The app uses the Codex device-authorization flow and retrieves data from the
+same ChatGPT endpoint used by Codex CLI:
 
 `GET https://chatgpt.com/backend-api/wham/usage`
 
-OAuth‑токены шифруются локально ключом из Android Keystore. Backup приложения
-отключён; cookies браузера и OpenAI API key не используются.
+OAuth tokens are encrypted locally with a key stored in Android Keystore.
+Application backup is disabled. Browser cookies and OpenAI API keys are not used.
 
-Endpoint относится к внутреннему ChatGPT/Codex контракту и может измениться.
-Приложение не является официальным продуктом OpenAI.
+This endpoint is part of an internal ChatGPT/Codex contract and may change.
+This app is not an official OpenAI product.
 
-## Сборка
+## Build
 
-Требования: JDK 17+, Android SDK 36.
+Requirements: JDK 17+ and Android SDK 36.
 
 ```powershell
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
@@ -39,27 +40,27 @@ $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
 .\gradlew.bat test assembleDebug
 ```
 
-Release‑подпись читается только из environment variables:
+Release signing configuration is read only from environment variables:
 
 - `CODEX_USAGE_KEYSTORE_PATH`
 - `CODEX_USAGE_KEYSTORE_PASSWORD`
 - `CODEX_USAGE_KEY_ALIAS`
 - `CODEX_USAGE_KEY_PASSWORD`
 
-GitHub Actions использует соответствующие repository secrets:
+GitHub Actions uses the corresponding repository secrets:
 
 - `ANDROID_KEYSTORE_BASE64`
 - `ANDROID_KEYSTORE_PASSWORD`
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-## Ограничения Android
+## Android limitations
 
-Foreground service остаётся активным с постоянной системной нотификацией.
-Производитель телефона всё равно может принудительно остановить приложение или
-ограничить сеть. Quick Settings tile и кнопка `Обновить сейчас` всегда выполняют
-ручную проверку. Уведомление отражает фактическую разницу между двумя успешными
-проверками.
+The foreground service stays active with a persistent system notification.
+The device manufacturer may still force-stop the app or restrict network access.
+The Quick Settings tile and the `Refresh now` button always perform a manual
+check. Change notifications show the actual difference between two successful
+checks.
 
 ## License
 
