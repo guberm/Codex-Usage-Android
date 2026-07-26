@@ -29,6 +29,7 @@ object RefreshCoordinator {
                 .getOrElse { RefreshResult.Error(friendlyMessage(it)) }
             refreshing.set(false)
             requestTileUpdate(appContext)
+            CodexUsageWidgetProvider.updateAll(appContext)
             callback?.let { mainHandler.post { it(result) } }
         }
     }

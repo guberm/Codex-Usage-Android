@@ -2,4 +2,11 @@
 <resources>
     <string name="app_name">Codex Usage</string>
     <string name="tile_name">Codex Usage</string>
+    <string name="widget_name">Codex Usage</string>
+    <string name="widget_description">Remaining Codex usage and reset time</string>
+    <string name="widget_logo_description">OpenAI Codex</string>
+    <string name="widget_refresh">Refresh usage</string>
+    <string name="widget_refresh_symbol">↻</string>
+    <string name="widget_empty_percent">—</string>
+    <string name="widget_sign_in">Tap to sign in</string>
 </resources>

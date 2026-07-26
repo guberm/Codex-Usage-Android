@@ -8,6 +8,7 @@ An unofficial Android companion for tracking OpenAI Codex usage limits.
 - date and local time of the next reset;
 - additional limits, such as GPT-5.3-Codex-Spark, when available for the account;
 - Quick Settings tile with tap-to-refresh;
+- Home screen widget with the remaining percentage, reset time, and tap-to-refresh;
 - persistent foreground monitoring that resumes after a device restart;
 - a backup periodic Android job;
 - notifications when the remaining limit changes;
@@ -58,9 +59,9 @@ GitHub Actions uses the corresponding repository secrets:
 
 The foreground service stays active with a persistent system notification.
 The device manufacturer may still force-stop the app or restrict network access.
-The Quick Settings tile and the `Refresh now` button always perform a manual
-check. Change notifications show the actual difference between two successful
-checks.
+The Quick Settings tile, Home screen widget refresh button, and the `Refresh now`
+button always perform a manual check. Change notifications show the actual
+difference between two successful checks.
 
 ## License
 

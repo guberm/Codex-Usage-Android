@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.StatusBarManager
+import android.appwidget.AppWidgetManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ComponentName
@@ -188,6 +189,7 @@ class MainActivity : Activity() {
         root.addView(loginButton)
         root.addView(refreshButton)
         root.addView(actionButton("Add Quick Settings tile") { requestTile() })
+        root.addView(actionButton("Add Home screen widget") { requestWidget() })
         logoutButton = actionButton("Sign out") { confirmLogout() }
         root.addView(logoutButton)
 
@@ -339,6 +341,16 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun requestWidget() {
+        val manager = getSystemService(AppWidgetManager::class.java)
+        val provider = ComponentName(this, CodexUsageWidgetProvider::class.java)
+        if (manager.isRequestPinAppWidgetSupported && manager.requestPinAppWidget(provider, null, null)) {
+            Toast.makeText(this, "Choose where to place the widget", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Add Codex Usage from your launcher's widget picker", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun confirmLogout() {
         AlertDialog.Builder(this)
             .setTitle("Sign out of Codex Usage?")
@@ -349,6 +361,7 @@ class MainActivity : Activity() {
                 UsageBackupJobService.cancel(this)
                 SecureTokenStore(this).clear()
                 UsageStore(this).clear()
+                CodexUsageWidgetProvider.updateAll(this)
                 render(null)
                 statusText.text = "Signed out"
             }
