@@ -209,10 +209,16 @@ class MainActivity : Activity() {
                 }
 
                 val deadline = System.currentTimeMillis() + 15 * 60 * 1000L
-                var pending: PendingAuthorization? = null
-                while (!destroyed && System.currentTimeMillis() < deadline && pending == null) {
-                    Thread.sleep(code.intervalSeconds * 1000L)
-                    pending = client.pollDeviceCode(code)
+                val pending = pollUntilAuthorized(
+                    deadlineMillis = deadline,
+                    intervalMillis = code.intervalSeconds * 1000L,
+                    onUnknownHost = {
+                        if (!destroyed) runOnUiThread {
+                            statusText.text = "Waiting for network… Authorization will resume automatically."
+                        }
+                    },
+                ) {
+                    client.pollDeviceCode(code)
                 }
                 if (pending == null) error("The code expired. Try again.")
                 val tokens = client.exchangeCode(pending)

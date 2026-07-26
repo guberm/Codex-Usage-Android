@@ -26,6 +26,25 @@ internal fun <T> retryUnknownHost(
     error("Unreachable")
 }
 
+internal fun <T> pollUntilAuthorized(
+    deadlineMillis: Long,
+    intervalMillis: Long,
+    nowMillis: () -> Long = System::currentTimeMillis,
+    sleep: (Long) -> Unit = Thread::sleep,
+    onUnknownHost: () -> Unit = {},
+    poll: () -> T?,
+): T? {
+    while (nowMillis() < deadlineMillis) {
+        sleep(intervalMillis)
+        try {
+            poll()?.let { return it }
+        } catch (_: UnknownHostException) {
+            onUnknownHost()
+        }
+    }
+    return null
+}
+
 private object CodexHttp {
     fun request(
         method: String,
@@ -40,7 +59,7 @@ private object CodexHttp {
             readTimeout = 20_000
             useCaches = false
             setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "codex-usage-android/0.1.1")
+            setRequestProperty("User-Agent", "codex-usage-android/0.1.2")
             headers.forEach { (name, value) -> setRequestProperty(name, value) }
             if (body != null) {
                 doOutput = true
