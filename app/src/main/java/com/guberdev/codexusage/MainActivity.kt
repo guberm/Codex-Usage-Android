@@ -253,13 +253,7 @@ class MainActivity : Activity() {
         setBusy("Refreshing…")
         RefreshCoordinator.refresh(this) { result ->
             when (result) {
-                is RefreshResult.Success -> {
-                    render(result.snapshot)
-                    statusText.text = result.delta?.let {
-                        val sign = if (it > 0) "+" else ""
-                        "Updated • change $sign$it%"
-                    } ?: "Updated"
-                }
+                is RefreshResult.Success -> render(result.snapshot)
                 is RefreshResult.Error -> statusText.text = result.message
             }
             setButtonsEnabled(true)
@@ -267,10 +261,12 @@ class MainActivity : Activity() {
     }
 
     private fun render(snapshot: UsageSnapshot?) {
-        val signedIn = SecureTokenStore(this).load() != null
+        val tokens = SecureTokenStore(this).load()
+        val signedIn = tokens != null
         loginButton.visibility = if (signedIn) View.GONE else View.VISIBLE
         logoutButton.visibility = if (signedIn) View.VISIBLE else View.GONE
         refreshButton.isEnabled = signedIn
+        statusText.text = tokens?.signedInText() ?: "Sign in with ChatGPT"
         if (snapshot == null) {
             percentText.text = "—"
             progress.progress = 0

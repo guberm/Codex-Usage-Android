@@ -17,6 +17,9 @@ import kotlin.math.roundToInt
 
 object TileDisplay {
     fun percent(remainingPercent: Int): String = "${remainingPercent.coerceIn(0, 100)}%"
+
+    fun textScale(remainingPercent: Int): Float =
+        if (percent(remainingPercent).length > 3) 0.34f else 0.44f
 }
 
 object UsagePercentIcon {
@@ -27,16 +30,21 @@ object UsagePercentIcon {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             style = Paint.Style.STROKE
-            strokeWidth = size * 0.07f
+            strokeWidth = size * 0.045f
         }
         val center = size / 2f
-        canvas.drawCircle(center, center, center - paint.strokeWidth, paint)
+        canvas.drawCircle(
+            center,
+            center,
+            center - paint.strokeWidth / 2f - size * 0.01f,
+            paint,
+        )
 
         val text = TileDisplay.percent(remainingPercent)
         paint.apply {
             style = Paint.Style.FILL
             textAlign = Paint.Align.CENTER
-            textSize = size * if (text.length > 3) 0.27f else 0.33f
+            textSize = size * TileDisplay.textScale(remainingPercent)
             typeface = Typeface.DEFAULT_BOLD
         }
         canvas.drawText(text, center, center - (paint.ascent() + paint.descent()) / 2f, paint)

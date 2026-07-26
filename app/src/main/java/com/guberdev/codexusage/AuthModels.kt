@@ -22,6 +22,11 @@ data class SessionTokens(
     val accessTokenExpiresAtEpochSeconds: Long?,
 )
 
+internal fun SessionTokens.signedInText(): String =
+    runCatching { JwtClaims.parse(idToken).email }.getOrNull()
+        ?.let { "Signed in with $it" }
+        ?: "Signed in with ChatGPT"
+
 object AuthJsonParser {
     fun parseDeviceCode(json: String): DeviceCode {
         val root = JSONObject(json)

@@ -59,6 +59,19 @@ class AuthJsonParserTest {
         assertEquals(2100000000L, tokens.accessTokenExpiresAtEpochSeconds)
     }
 
+    @Test
+    fun `signed in label shows the account email`() {
+        val tokens = SessionTokens(
+            idToken = jwt("""{"email":"michael@example.com"}"""),
+            accessToken = jwt("""{"exp":2100000000}"""),
+            refreshToken = "refresh-1",
+            accountId = "workspace-123",
+            accessTokenExpiresAtEpochSeconds = 2100000000L,
+        )
+
+        assertEquals("Signed in with michael@example.com", tokens.signedInText())
+    }
+
     private fun jwt(payload: String): String {
         val encoder = Base64.getUrlEncoder().withoutPadding()
         val header = encoder.encodeToString("""{"alg":"none"}""".toByteArray())

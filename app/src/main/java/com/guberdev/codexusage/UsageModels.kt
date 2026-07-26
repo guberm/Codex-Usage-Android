@@ -108,6 +108,7 @@ object UsageChangeDetector {
 
 data class JwtClaims(
     val accountId: String?,
+    val email: String?,
     val expiresAtEpochSeconds: Long?,
 ) {
     companion object {
@@ -119,6 +120,7 @@ data class JwtClaims(
             val auth = json.optJSONObject("https://api.openai.com/auth")
             return JwtClaims(
                 accountId = auth?.optionalString("chatgpt_account_id"),
+                email = json.optionalString("email"),
                 expiresAtEpochSeconds = json.optLong("exp").takeIf { it > 0 },
             )
         }
