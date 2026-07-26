@@ -1,0 +1,97 @@
+package com.guberdev.codexusage
+
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+
+object NotificationHelper {
+    const val MONITOR_NOTIFICATION_ID = 4101
+    private const val CHANGE_NOTIFICATION_BASE_ID = 4200
+    private const val MONITOR_CHANNEL = "codex_monitor"
+    private const val CHANGE_CHANNEL = "codex_changes"
+
+    fun createChannels(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(
+            NotificationChannel(
+                MONITOR_CHANNEL,
+                "Codex Usage monitor",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = "Постоянный статус фонового мониторинга Codex Usage"
+                setShowBadge(false)
+            },
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANGE_CHANNEL,
+                "Codex Usage changes",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = "Изменения оставшегося лимита Codex"
+            },
+        )
+    }
+
+    fun monitorNotification(context: Context, snapshot: UsageSnapshot?, status: String? = null): Notification {
+        createChannels(context)
+        val title = snapshot?.let { "Codex Usage: ${it.primary.remainingPercent}% осталось" }
+            ?: "Codex Usage monitor"
+        val reset = snapshot?.primary?.resetAtEpochSeconds
+        val text = status ?: snapshot?.let { "Сброс: ${UsageText.resetDate(reset)}" }
+            ?: "Ожидание первой проверки"
+        return Notification.Builder(context, MONITOR_CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_usage)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setContentIntent(mainPendingIntent(context))
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(Notification.CATEGORY_SERVICE)
+            .build()
+    }
+
+    fun notifyChange(context: Context, snapshot: UsageSnapshot, delta: Int) {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        createChannels(context)
+        val sign = if (delta > 0) "+" else "−"
+        val notification = Notification.Builder(context, CHANGE_CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_usage)
+            .setContentTitle("Codex Usage: $sign${kotlin.math.abs(delta)}%")
+            .setContentText(
+                "Осталось ${snapshot.primary.remainingPercent}% • " +
+                    "сброс ${UsageText.resetDate(snapshot.primary.resetAtEpochSeconds)}",
+            )
+            .setContentIntent(mainPendingIntent(context))
+            .setAutoCancel(true)
+            .setCategory(Notification.CATEGORY_STATUS)
+            .build()
+        context.getSystemService(NotificationManager::class.java)
+            .notify(CHANGE_NOTIFICATION_BASE_ID + (System.currentTimeMillis() % 100).toInt(), notification)
+    }
+
+    fun updateMonitor(context: Context, snapshot: UsageSnapshot?, status: String? = null) {
+        context.getSystemService(NotificationManager::class.java)
+            .notify(MONITOR_NOTIFICATION_ID, monitorNotification(context, snapshot, status))
+    }
+
+    private fun mainPendingIntent(context: Context): PendingIntent =
+        PendingIntent.getActivity(
+            context,
+            0,
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+}

@@ -1,0 +1,12 @@
+/.gradle/
+/.idea/
+/local.properties
+/**/build/
+*.iml
+*.jks
+*.keystore
+keystore.properties
+signing-secrets.*
+app/src/main/res/drawable-nodpi/ic_launcher_foreground_chroma.png
+/qa-evidence/
+/release-artifacts/
