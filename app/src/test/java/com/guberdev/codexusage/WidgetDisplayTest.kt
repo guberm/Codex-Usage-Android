@@ -14,12 +14,14 @@ class WidgetDisplayTest {
         )
 
         assertEquals("53%", WidgetDisplay.percent(snapshot))
+        assertEquals(53, WidgetDisplay.progress(snapshot))
         assertEquals("Reset: —", WidgetDisplay.reset(snapshot))
     }
 
     @Test
     fun `widget prompts for sign in without usage data`() {
         assertEquals("—", WidgetDisplay.percent(null))
+        assertEquals(0, WidgetDisplay.progress(null))
         assertEquals("Tap to sign in", WidgetDisplay.reset(null))
     }
 }

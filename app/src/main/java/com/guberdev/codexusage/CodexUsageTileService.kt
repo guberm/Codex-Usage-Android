@@ -19,35 +19,27 @@ import kotlin.math.roundToInt
 object TileDisplay {
     fun percent(remainingPercent: Int): String = "${remainingPercent.coerceIn(0, 100)}%"
 
-    fun iconText(remainingPercent: Int): String = percent(remainingPercent)
-
-    fun iconFontFamily(): String = "sans-serif-medium"
-
-    fun iconFillFraction(): Float = 0.94f
+    fun label(remainingPercent: Int): String = "${percent(remainingPercent)} Codex"
 }
 
 object UsagePercentIcon {
     fun create(context: Context, remainingPercent: Int): Icon {
-        val size = (48 * context.resources.displayMetrics.density).roundToInt().coerceAtLeast(48)
+        val size = (64 * context.resources.displayMetrics.density).roundToInt().coerceAtLeast(64)
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val text = TileDisplay.iconText(remainingPercent)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            style = Paint.Style.FILL
-            textAlign = Paint.Align.CENTER
-            textSize = size.toFloat()
-            typeface = Typeface.create(TileDisplay.iconFontFamily(), Typeface.NORMAL)
-        }
-        val bounds = Rect()
-        paint.getTextBounds(text, 0, text.length, bounds)
-        val targetSize = size * TileDisplay.iconFillFraction()
-        paint.textSize *= targetSize / bounds.height().coerceAtLeast(1)
-        paint.getTextBounds(text, 0, text.length, bounds)
-        paint.textScaleX = (targetSize / paint.measureText(text)).coerceAtMost(1f)
-        val center = size / 2f
-        canvas.drawText(text, center, center - (bounds.top + bounds.bottom) / 2f, paint)
+        val text = TileDisplay.percent(remainingPercent)
+        val textPaint = paint(size.toFloat()).apply { textAlign = Paint.Align.CENTER }
+        textPaint.textSize *= (size * 0.96f / textPaint.measureText(text)).coerceAtMost(1f)
+        val bounds = Rect().also { textPaint.getTextBounds(text, 0, text.length, it) }
+        canvas.drawText(text, size / 2f, size / 2f - (bounds.top + bounds.bottom) / 2f, textPaint)
         return Icon.createWithBitmap(bitmap)
+    }
+
+    private fun paint(textSize: Float): Paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        this.textSize = textSize
+        typeface = Typeface.create("sans-serif", Typeface.BOLD)
     }
 }
 
@@ -68,6 +60,7 @@ class CodexUsageTileService : TileService() {
             label = "Codex • refresh…"
             updateTile()
         }
+        UsageMonitorService.start(this)
         RefreshCoordinator.refresh(this) { render() }
     }
 
@@ -79,7 +72,7 @@ class CodexUsageTileService : TileService() {
             } ?: Icon.createWithResource(this@CodexUsageTileService, R.drawable.ic_stat_usage)
             state = if (snapshot == null) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
             label = snapshot?.let {
-                "Codex ${TileDisplay.percent(it.primary.remainingPercent)}"
+                TileDisplay.label(it.primary.remainingPercent)
             } ?: "Codex Usage"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 subtitle = snapshot?.let {

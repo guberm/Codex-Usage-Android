@@ -53,6 +53,7 @@ object RefreshCoordinator {
 
         val settings = MonitorSettingsStore(context).load()
         val delta = UsageStore(context).save(snapshot, settings.notifyEveryPercent)
+        NotificationHelper.updateMonitor(context, snapshot)
         if (delta != null) NotificationHelper.notifyChange(context, snapshot, delta)
         UsageBackupJobService.schedule(context)
         return RefreshResult.Success(snapshot, delta)

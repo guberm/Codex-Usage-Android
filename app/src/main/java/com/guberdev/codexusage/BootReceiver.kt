@@ -11,6 +11,7 @@ class BootReceiver : BroadcastReceiver() {
             intent.action == Intent.ACTION_MY_PACKAGE_REPLACED
         ) {
             UsageBackupJobService.schedule(context)
+            UsageMonitorService.start(context)
         }
     }
 }

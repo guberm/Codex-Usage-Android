@@ -15,6 +15,9 @@ object WidgetDisplay {
     fun reset(snapshot: UsageSnapshot?): String =
         snapshot?.let { "Reset: ${UsageText.shortResetDate(it.primary.resetAtEpochSeconds)}" }
             ?: "Tap to sign in"
+
+    fun progress(snapshot: UsageSnapshot?): Int =
+        snapshot?.primary?.remainingPercent?.coerceIn(0, 100) ?: 0
 }
 
 class CodexUsageWidgetProvider : AppWidgetProvider() {
@@ -54,6 +57,7 @@ class CodexUsageWidgetProvider : AppWidgetProvider() {
             widgetIds.forEach { widgetId ->
                 val views = RemoteViews(context.packageName, R.layout.codex_usage_widget).apply {
                     setTextViewText(R.id.widget_percent, WidgetDisplay.percent(snapshot))
+                    setProgressBar(R.id.widget_progress, 100, WidgetDisplay.progress(snapshot), false)
                     setTextViewText(R.id.widget_reset, WidgetDisplay.reset(snapshot))
                     setOnClickPendingIntent(
                         R.id.widget_root,
