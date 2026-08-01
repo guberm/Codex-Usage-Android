@@ -11,6 +11,11 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
 import android.os.Build
 
+object MonitorDisplay {
+    fun shortCriticalText(snapshot: UsageSnapshot?): String =
+        snapshot?.let { TileDisplay.percent(it.primary.remainingPercent) } ?: "Codex"
+}
+
 object NotificationHelper {
     const val MONITOR_NOTIFICATION_ID = 4101
     private const val CHANGE_NOTIFICATION_BASE_ID = 4200
@@ -47,11 +52,15 @@ object NotificationHelper {
         val reset = snapshot?.primary?.resetAtEpochSeconds
         val text = status ?: snapshot?.let { "Reset: ${UsageText.resetDate(reset)}" }
             ?: "Waiting for the first check"
-        return Notification.Builder(context, MONITOR_CHANNEL)
+        val builder = Notification.Builder(context, MONITOR_CHANNEL)
             .setSmallIcon(
-                snapshot?.let {
-                    UsagePercentIcon.create(context, it.primary.remainingPercent)
-                } ?: Icon.createWithResource(context, R.drawable.ic_stat_usage),
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+                    Icon.createWithResource(context, R.drawable.ic_stat_usage)
+                } else {
+                    snapshot?.let {
+                        UsagePercentIcon.create(context, it.primary.remainingPercent)
+                    } ?: Icon.createWithResource(context, R.drawable.ic_stat_usage)
+                },
             )
             .setContentTitle(title)
             .setContentText(text)
@@ -59,7 +68,12 @@ object NotificationHelper {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_SERVICE)
-            .build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            builder
+                .setShortCriticalText(MonitorDisplay.shortCriticalText(snapshot))
+                .setColorized(true)
+        }
+        return builder.build()
     }
 
     fun notifyChange(context: Context, snapshot: UsageSnapshot, delta: Int) {

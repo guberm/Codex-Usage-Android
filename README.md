@@ -10,6 +10,7 @@ An unofficial Android companion for tracking OpenAI Codex usage limits.
 - Quick Settings tile with tap-to-refresh;
 - compact 2×1 Home screen widget with light/dark appearance, remaining percentage, reset time, and tap-to-refresh;
 - persistent foreground monitoring that resumes after a device restart;
+- Android 16+ status-bar chip with the remaining percentage;
 - a backup periodic Android job;
 - notifications when the remaining limit changes;
 - `Check every` settings of 1/2/4/6/12/24 hours;
