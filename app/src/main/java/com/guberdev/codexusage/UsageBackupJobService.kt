@@ -26,6 +26,7 @@ class UsageBackupJobService : JobService() {
         private const val JOB_ID = 48191
 
         fun schedule(context: Context) {
+            NotificationHelper.removeLegacyMonitor(context)
             val minutes = MonitorSettingsStore(context).load().checkEveryMinutes.toLong()
             val interval = TimeUnit.MINUTES.toMillis(minutes)
                 .coerceAtLeast(JobInfo.getMinPeriodMillis())

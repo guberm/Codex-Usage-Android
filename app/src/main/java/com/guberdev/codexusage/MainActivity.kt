@@ -62,7 +62,6 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (SecureTokenStore(this).load() != null) {
-            UsageMonitorService.start(this)
             UsageBackupJobService.schedule(this)
         }
         render(UsageStore(this).load())
@@ -229,7 +228,6 @@ class MainActivity : Activity() {
                     runOnUiThread {
                         codePanel.visibility = View.GONE
                         statusText.text = "Signed in. Refreshing usage…"
-                        UsageMonitorService.start(this)
                         UsageBackupJobService.schedule(this)
                         refreshNow()
                     }
@@ -313,7 +311,6 @@ class MainActivity : Activity() {
         )
         MonitorSettingsStore(this).save(settings)
         UsageBackupJobService.schedule(this)
-        UsageMonitorService.restart(this)
         Toast.makeText(
             this,
             "Check: ${checkIntervalLabel(settings.checkEveryMinutes)}, notify: ${settings.notifyEveryPercent}%",
@@ -357,7 +354,6 @@ class MainActivity : Activity() {
             .setMessage("OAuth tokens will be removed only from this phone.")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Sign out") { _, _ ->
-                UsageMonitorService.stop(this)
                 UsageBackupJobService.cancel(this)
                 SecureTokenStore(this).clear()
                 UsageStore(this).clear()

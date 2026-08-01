@@ -8,32 +8,16 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.drawable.Icon
 import android.os.Build
 
-object MonitorDisplay {
-    fun shortCriticalText(snapshot: UsageSnapshot?): String =
-        snapshot?.let { TileDisplay.percent(it.primary.remainingPercent) } ?: "Codex"
-}
-
 object NotificationHelper {
-    const val MONITOR_NOTIFICATION_ID = 4101
+    private const val LEGACY_MONITOR_NOTIFICATION_ID = 4101
+    private const val LEGACY_MONITOR_CHANNEL = "codex_monitor"
     private const val CHANGE_NOTIFICATION_BASE_ID = 4200
-    private const val MONITOR_CHANNEL = "codex_monitor"
     private const val CHANGE_CHANNEL = "codex_changes"
 
     fun createChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(
-                MONITOR_CHANNEL,
-                "Codex Usage monitor",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "Persistent Codex Usage background monitoring status"
-                setShowBadge(false)
-            },
-        )
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANGE_CHANNEL,
@@ -45,35 +29,11 @@ object NotificationHelper {
         )
     }
 
-    fun monitorNotification(context: Context, snapshot: UsageSnapshot?, status: String? = null): Notification {
-        createChannels(context)
-        val title = snapshot?.let { "Codex Usage: ${it.primary.remainingPercent}% remaining" }
-            ?: "Codex Usage monitor"
-        val reset = snapshot?.primary?.resetAtEpochSeconds
-        val text = status ?: snapshot?.let { "Reset: ${UsageText.resetDate(reset)}" }
-            ?: "Waiting for the first check"
-        val builder = Notification.Builder(context, MONITOR_CHANNEL)
-            .setSmallIcon(
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-                    Icon.createWithResource(context, R.drawable.ic_stat_usage)
-                } else {
-                    snapshot?.let {
-                        UsagePercentIcon.create(context, it.primary.remainingPercent)
-                    } ?: Icon.createWithResource(context, R.drawable.ic_stat_usage)
-                },
-            )
-            .setContentTitle(title)
-            .setContentText(text)
-            .setContentIntent(mainPendingIntent(context))
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setCategory(Notification.CATEGORY_SERVICE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-            builder
-                .setShortCriticalText(MonitorDisplay.shortCriticalText(snapshot))
-                .setColorized(true)
+    fun removeLegacyMonitor(context: Context) {
+        context.getSystemService(NotificationManager::class.java).apply {
+            cancel(LEGACY_MONITOR_NOTIFICATION_ID)
+            deleteNotificationChannel(LEGACY_MONITOR_CHANNEL)
         }
-        return builder.build()
     }
 
     fun notifyChange(context: Context, snapshot: UsageSnapshot, delta: Int) {
@@ -98,11 +58,6 @@ object NotificationHelper {
             .build()
         context.getSystemService(NotificationManager::class.java)
             .notify(CHANGE_NOTIFICATION_BASE_ID + (System.currentTimeMillis() % 100).toInt(), notification)
-    }
-
-    fun updateMonitor(context: Context, snapshot: UsageSnapshot?, status: String? = null) {
-        context.getSystemService(NotificationManager::class.java)
-            .notify(MONITOR_NOTIFICATION_ID, monitorNotification(context, snapshot, status))
     }
 
     private fun mainPendingIntent(context: Context): PendingIntent =
