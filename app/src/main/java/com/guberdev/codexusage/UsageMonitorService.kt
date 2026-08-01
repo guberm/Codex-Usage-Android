@@ -41,13 +41,13 @@ class UsageMonitorService : Service() {
 
     private fun scheduleChecks() {
         scheduler?.shutdownNow()
-        val hours = MonitorSettingsStore(this).load().checkEveryHours.toLong()
+        val minutes = MonitorSettingsStore(this).load().checkEveryMinutes.toLong()
         scheduler = Executors.newSingleThreadScheduledExecutor().also {
             it.scheduleWithFixedDelay(
                 { RefreshCoordinator.refresh(this) },
                 0,
-                hours,
-                TimeUnit.HOURS,
+                minutes,
+                TimeUnit.MINUTES,
             )
         }
     }

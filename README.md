@@ -13,7 +13,7 @@ An unofficial Android companion for tracking OpenAI Codex usage limits.
 - Android 16+ status-bar chip with the remaining percentage;
 - a backup periodic Android job;
 - notifications when the remaining limit changes;
-- `Check every` settings of 1/2/4/6/12/24 hours;
+- `Check every` settings of 15/30/45 minutes or 1/2/4/6/12/24 hours;
 - `Notify every` settings of 1/2/5/10/20%;
 - secure ChatGPT device login without an API key or copied browser cookies.
 

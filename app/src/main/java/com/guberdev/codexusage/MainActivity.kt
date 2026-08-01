@@ -136,7 +136,7 @@ class MainActivity : Activity() {
         checkSpinner.adapter = ArrayAdapter(
             this,
             android.R.layout.simple_spinner_dropdown_item,
-            MonitorSettingsStore.CHECK_HOUR_OPTIONS.map { if (it == 1) "1 hour" else "$it hours" },
+            MonitorSettingsStore.CHECK_MINUTE_OPTIONS.map(::checkIntervalLabel),
         )
         settingsCard.addView(checkSpinner)
         settingsCard.addView(bodyText("Notify every", Color.DKGRAY))
@@ -299,7 +299,7 @@ class MainActivity : Activity() {
     private fun loadSettings() {
         val settings = MonitorSettingsStore(this).load()
         checkSpinner.setSelection(
-            MonitorSettingsStore.CHECK_HOUR_OPTIONS.indexOf(settings.checkEveryHours),
+            MonitorSettingsStore.CHECK_MINUTE_OPTIONS.indexOf(settings.checkEveryMinutes),
         )
         notifySpinner.setSelection(
             MonitorSettingsStore.NOTIFY_PERCENT_OPTIONS.indexOf(settings.notifyEveryPercent),
@@ -308,7 +308,7 @@ class MainActivity : Activity() {
 
     private fun saveSettings() {
         val settings = MonitorSettings(
-            checkEveryHours = MonitorSettingsStore.CHECK_HOUR_OPTIONS[checkSpinner.selectedItemPosition],
+            checkEveryMinutes = MonitorSettingsStore.CHECK_MINUTE_OPTIONS[checkSpinner.selectedItemPosition],
             notifyEveryPercent = MonitorSettingsStore.NOTIFY_PERCENT_OPTIONS[notifySpinner.selectedItemPosition],
         )
         MonitorSettingsStore(this).save(settings)
@@ -316,7 +316,7 @@ class MainActivity : Activity() {
         UsageMonitorService.restart(this)
         Toast.makeText(
             this,
-            "Check: ${settings.checkEveryHours} hr, notify: ${settings.notifyEveryPercent}%",
+            "Check: ${checkIntervalLabel(settings.checkEveryMinutes)}, notify: ${settings.notifyEveryPercent}%",
             Toast.LENGTH_SHORT,
         ).show()
     }
