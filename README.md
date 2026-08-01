@@ -8,7 +8,7 @@ An unofficial Android companion for tracking OpenAI Codex usage limits.
 - date and local time of the next reset;
 - additional limits, such as GPT-5.3-Codex-Spark, when available for the account;
 - Quick Settings tile with tap-to-refresh;
-- Home screen widget with the remaining percentage, reset time, and tap-to-refresh;
+- compact 2×1 Home screen widget with light/dark appearance, remaining percentage, reset time, and tap-to-refresh;
 - persistent foreground monitoring that resumes after a device restart;
 - a backup periodic Android job;
 - notifications when the remaining limit changes;

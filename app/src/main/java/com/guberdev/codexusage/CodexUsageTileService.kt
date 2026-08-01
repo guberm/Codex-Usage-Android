@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.graphics.drawable.Icon
 import android.os.Build
@@ -20,8 +21,9 @@ object TileDisplay {
 
     fun iconText(remainingPercent: Int): String = percent(remainingPercent)
 
-    fun textScale(remainingPercent: Int): Float =
-        if (iconText(remainingPercent).length > 3) 0.56f else 0.72f
+    fun iconFontFamily(): String = "sans-serif-medium"
+
+    fun iconFillFraction(): Float = 0.94f
 }
 
 object UsagePercentIcon {
@@ -34,12 +36,17 @@ object UsagePercentIcon {
             color = Color.WHITE
             style = Paint.Style.FILL
             textAlign = Paint.Align.CENTER
-            textSize = size * TileDisplay.textScale(remainingPercent)
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+            textSize = size.toFloat()
+            typeface = Typeface.create(TileDisplay.iconFontFamily(), Typeface.NORMAL)
         }
-        paint.textScaleX = (size * 0.94f / paint.measureText(text)).coerceAtMost(1f)
+        val bounds = Rect()
+        paint.getTextBounds(text, 0, text.length, bounds)
+        val targetSize = size * TileDisplay.iconFillFraction()
+        paint.textSize *= targetSize / bounds.height().coerceAtLeast(1)
+        paint.getTextBounds(text, 0, text.length, bounds)
+        paint.textScaleX = (targetSize / paint.measureText(text)).coerceAtMost(1f)
         val center = size / 2f
-        canvas.drawText(text, center, center - (paint.ascent() + paint.descent()) / 2f, paint)
+        canvas.drawText(text, center, center - (bounds.top + bounds.bottom) / 2f, paint)
         return Icon.createWithBitmap(bitmap)
     }
 }

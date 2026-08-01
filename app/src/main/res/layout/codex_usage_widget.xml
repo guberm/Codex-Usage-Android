@@ -7,28 +7,13 @@
     android:clickable="true"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="16dp">
-
-    <ImageView
-        android:layout_width="44dp"
-        android:layout_height="44dp"
-        android:contentDescription="@string/widget_logo_description"
-        android:src="@drawable/ic_launcher_foreground" />
+    android:padding="8dp">
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
         android:layout_weight="1"
         android:orientation="vertical">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/widget_name"
-            android:textColor="@color/widget_secondary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_percent"
@@ -37,7 +22,7 @@
             android:includeFontPadding="false"
             android:text="@string/widget_empty_percent"
             android:textColor="@color/widget_primary"
-            android:textSize="40sp"
+            android:textSize="32sp"
             android:textStyle="bold" />
 
         <TextView
@@ -48,7 +33,7 @@
             android:maxLines="1"
             android:text="@string/widget_sign_in"
             android:textColor="@color/widget_secondary"
-            android:textSize="12sp" />
+            android:textSize="10sp" />
     </LinearLayout>
 
     <TextView

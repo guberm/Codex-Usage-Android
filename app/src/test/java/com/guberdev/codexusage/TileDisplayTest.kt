@@ -15,8 +15,8 @@ class TileDisplayTest {
     }
 
     @Test
-    fun `system icon number fills the available height`() {
-        assertEquals(0.72f, TileDisplay.textScale(53))
-        assertEquals(0.56f, TileDisplay.textScale(100))
+    fun `system icon uses clock typography and fills the available height`() {
+        assertEquals("sans-serif-medium", TileDisplay.iconFontFamily())
+        assertEquals(0.94f, TileDisplay.iconFillFraction())
     }
 }
