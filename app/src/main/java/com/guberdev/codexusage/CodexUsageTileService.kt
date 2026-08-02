@@ -60,7 +60,6 @@ class CodexUsageTileService : TileService() {
             label = "Codex • refresh…"
             updateTile()
         }
-        UsageMonitorService.start(this)
         RefreshCoordinator.refresh(this) { render() }
     }
 

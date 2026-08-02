@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
-import android.app.NotificationManager
 import android.app.StatusBarManager
 import android.appwidget.AppWidgetManager
 import android.content.ClipData
@@ -49,7 +48,6 @@ class MainActivity : Activity() {
     private lateinit var codeText: TextView
     private lateinit var checkSpinner: Spinner
     private lateinit var notifySpinner: Spinner
-    private var promotionButton: Button? = null
     private var pendingDeviceCode: DeviceCode? = null
     @Volatile private var destroyed = false
 
@@ -64,16 +62,8 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (SecureTokenStore(this).load() != null) {
-            UsageMonitorService.start(this)
             UsageBackupJobService.schedule(this)
-            if (
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA &&
-                getSystemService(NotificationManager::class.java).canPostPromotedNotifications()
-            ) {
-                NotificationHelper.updateMonitor(this, UsageStore(this).load())
-            }
         }
-        updatePromotionButton()
         render(UsageStore(this).load())
     }
 
@@ -92,7 +82,7 @@ class MainActivity : Activity() {
 
         root.addView(
             ImageView(this).apply {
-                setImageResource(R.drawable.ic_launcher_foreground)
+                setImageResource(R.mipmap.ic_launcher)
                 contentDescription = "OpenAI Codex usage gauge"
                 adjustViewBounds = true
             },
@@ -140,18 +130,6 @@ class MainActivity : Activity() {
 
         val settingsCard = card()
         settingsCard.addView(sectionTitle("Notification settings"))
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-            promotionButton = Button(this).apply {
-                setOnClickListener { openPromotionSettings() }
-            }
-            settingsCard.addView(promotionButton)
-            settingsCard.addView(
-                bodyText(
-                    "Android 16 requires this permission to show 53% in the status bar chip.",
-                    Color.GRAY,
-                ),
-            )
-        }
         settingsCard.addView(bodyText("Check every", Color.DKGRAY))
         checkSpinner = Spinner(this)
         checkSpinner.adapter = ArrayAdapter(
@@ -250,7 +228,6 @@ class MainActivity : Activity() {
                     runOnUiThread {
                         codePanel.visibility = View.GONE
                         statusText.text = "Signed in. Refreshing usage…"
-                        UsageMonitorService.start(this)
                         UsageBackupJobService.schedule(this)
                         refreshNow()
                     }
@@ -334,7 +311,6 @@ class MainActivity : Activity() {
         )
         MonitorSettingsStore(this).save(settings)
         UsageBackupJobService.schedule(this)
-        UsageMonitorService.restart(this)
         Toast.makeText(
             this,
             "Check: ${checkIntervalLabel(settings.checkEveryMinutes)}, notify: ${settings.notifyEveryPercent}%",
@@ -378,7 +354,6 @@ class MainActivity : Activity() {
             .setMessage("OAuth tokens will be removed only from this phone.")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Sign out") { _, _ ->
-                UsageMonitorService.stop(this)
                 UsageBackupJobService.cancel(this)
                 SecureTokenStore(this).clear()
                 UsageStore(this).clear()
@@ -395,29 +370,6 @@ class MainActivity : Activity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 300)
-        }
-    }
-
-    private fun openPromotionSettings() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA) return
-        if (SecureTokenStore(this).load() == null) return
-        NotificationHelper.updateMonitor(this, UsageStore(this).load())
-        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS)
-            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-        runCatching { startActivity(intent) }
-            .onFailure {
-                Toast.makeText(this, "Status bar percentage settings are unavailable", Toast.LENGTH_LONG).show()
-            }
-    }
-
-    private fun updatePromotionButton() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA) return
-        promotionButton?.visibility = if (SecureTokenStore(this).load() == null) View.GONE else View.VISIBLE
-        val enabled = getSystemService(NotificationManager::class.java).canPostPromotedNotifications()
-        promotionButton?.text = if (enabled) {
-            "Status bar percentage: enabled"
-        } else {
-            "Enable % in status bar"
         }
     }
 

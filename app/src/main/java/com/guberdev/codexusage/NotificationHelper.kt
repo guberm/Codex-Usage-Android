@@ -10,32 +10,12 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 
-object MonitorDisplay {
-    fun title(snapshot: UsageSnapshot?): String =
-        snapshot?.let { "${it.primary.remainingPercent}% Codex remaining" } ?: "Codex Usage monitor"
-
-    fun shortCriticalText(snapshot: UsageSnapshot?): String =
-        snapshot?.let { TileDisplay.percent(it.primary.remainingPercent) } ?: "Codex"
-}
-
 object NotificationHelper {
-    const val MONITOR_NOTIFICATION_ID = 4101
     private const val CHANGE_NOTIFICATION_BASE_ID = 4200
-    private const val MONITOR_CHANNEL = "codex_monitor"
     private const val CHANGE_CHANNEL = "codex_changes"
 
     fun createChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(
-                MONITOR_CHANNEL,
-                "Codex Usage monitor",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "Persistent Codex Usage background monitoring status"
-                setShowBadge(false)
-            },
-        )
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANGE_CHANNEL,
@@ -45,31 +25,6 @@ object NotificationHelper {
                 description = "Changes to the remaining Codex usage limit"
             },
         )
-    }
-
-    fun monitorNotification(context: Context, snapshot: UsageSnapshot?, status: String? = null): Notification {
-        createChannels(context)
-        val reset = snapshot?.primary?.resetAtEpochSeconds
-        val text = status ?: snapshot?.let { "Reset: ${UsageText.resetDate(reset)}" }
-            ?: "Waiting for the first check"
-        val builder = Notification.Builder(context, MONITOR_CHANNEL)
-            .setSmallIcon(R.drawable.ic_stat_usage)
-            .setContentTitle(MonitorDisplay.title(snapshot))
-            .setContentText(text)
-            .setContentIntent(mainPendingIntent(context))
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setCategory(Notification.CATEGORY_SERVICE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-            builder.setShortCriticalText(MonitorDisplay.shortCriticalText(snapshot))
-            val requested = runCatching {
-                builder.javaClass
-                    .getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType)
-                    .invoke(builder, true)
-            }.isSuccess
-            if (!requested) builder.setColorized(true)
-        }
-        return builder.build()
     }
 
     fun notifyChange(context: Context, snapshot: UsageSnapshot, delta: Int) {
@@ -94,11 +49,6 @@ object NotificationHelper {
             .build()
         context.getSystemService(NotificationManager::class.java)
             .notify(CHANGE_NOTIFICATION_BASE_ID + (System.currentTimeMillis() % 100).toInt(), notification)
-    }
-
-    fun updateMonitor(context: Context, snapshot: UsageSnapshot?, status: String? = null) {
-        context.getSystemService(NotificationManager::class.java)
-            .notify(MONITOR_NOTIFICATION_ID, monitorNotification(context, snapshot, status))
     }
 
     private fun mainPendingIntent(context: Context): PendingIntent =
