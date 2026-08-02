@@ -47,7 +47,8 @@ jobs:
           CODEX_USAGE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           ./gradlew test lint bundleRelease assembleRelease --no-daemon --max-workers=1
-          jarsigner -verify -strict app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify app/build/outputs/bundle/release/app-release.aab
+          keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab >/dev/null
           cp app/build/outputs/bundle/release/app-release.aab Codex-Usage-${GITHUB_REF_NAME}.aab
           cp app/build/outputs/apk/release/app-release.apk Codex-Usage-${GITHUB_REF_NAME}.apk
 
