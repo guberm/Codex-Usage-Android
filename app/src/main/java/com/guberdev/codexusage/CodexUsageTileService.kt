@@ -17,6 +17,9 @@ import android.service.quicksettings.TileService
 import kotlin.math.roundToInt
 
 object TileDisplay {
+    const val ICON_TEXT_SCALE = 1.04f
+    const val ICON_MAX_WIDTH_RATIO = 0.99f
+
     fun percent(remainingPercent: Int): String = "${remainingPercent.coerceIn(0, 100)}%"
 
     fun label(remainingPercent: Int): String = "${percent(remainingPercent)} Codex"
@@ -28,8 +31,9 @@ object UsagePercentIcon {
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val text = TileDisplay.percent(remainingPercent)
-        val textPaint = paint(size.toFloat()).apply { textAlign = Paint.Align.CENTER }
-        textPaint.textSize *= (size * 0.96f / textPaint.measureText(text)).coerceAtMost(1f)
+        val textPaint = paint(size * TileDisplay.ICON_TEXT_SCALE).apply { textAlign = Paint.Align.CENTER }
+        textPaint.textSize *=
+            (size * TileDisplay.ICON_MAX_WIDTH_RATIO / textPaint.measureText(text)).coerceAtMost(1f)
         val bounds = Rect().also { textPaint.getTextBounds(text, 0, text.length, it) }
         canvas.drawText(text, size / 2f, size / 2f - (bounds.top + bounds.bottom) / 2f, textPaint)
         return Icon.createWithBitmap(bitmap)
