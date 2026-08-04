@@ -10,12 +10,32 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 
+object MonitorDisplay {
+    fun title(snapshot: UsageSnapshot?): String =
+        snapshot?.let { "${it.primary.remainingPercent}% Codex remaining" } ?: "Codex Usage monitor"
+
+    fun shortCriticalText(snapshot: UsageSnapshot?): String =
+        snapshot?.let { "${it.primary.remainingPercent}%" } ?: "Codex"
+}
+
 object NotificationHelper {
-    private const val CHANGE_NOTIFICATION_BASE_ID = 4200
+    const val MONITOR_NOTIFICATION_ID = 4101
+    private const val CHANGE_NOTIFICATION_ID = 4200
+    private const val MONITOR_CHANNEL = "codex_monitor"
     private const val CHANGE_CHANNEL = "codex_changes"
 
     fun createChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(
+            NotificationChannel(
+                MONITOR_CHANNEL,
+                "Codex Usage monitor",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = "Persistent Codex Usage status"
+                setShowBadge(false)
+            },
+        )
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANGE_CHANNEL,
@@ -27,13 +47,43 @@ object NotificationHelper {
         )
     }
 
-    fun notifyChange(context: Context, snapshot: UsageSnapshot, delta: Int) {
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
+    fun showMonitor(context: Context, snapshot: UsageSnapshot? = UsageStore(context).load()) {
+        if (SecureTokenStore(context).load() == null || !canNotify(context)) return
+        createChannels(context)
+        context.getSystemService(NotificationManager::class.java)
+            .notify(MONITOR_NOTIFICATION_ID, monitorNotification(context, snapshot))
+    }
+
+    fun cancelMonitor(context: Context) {
+        context.getSystemService(NotificationManager::class.java).cancel(MONITOR_NOTIFICATION_ID)
+    }
+
+    private fun monitorNotification(context: Context, snapshot: UsageSnapshot?): Notification {
+        val text = snapshot?.let {
+            "${it.primary.remainingPercent}% remaining • resets " +
+                UsageText.resetDate(it.primary.resetAtEpochSeconds)
+        } ?: "Waiting for the first check"
+        val builder = Notification.Builder(context, MONITOR_CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_usage)
+            .setContentTitle(MonitorDisplay.title(snapshot))
+            .setContentText(text)
+            .setContentIntent(mainPendingIntent(context))
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(Notification.CATEGORY_STATUS)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            builder.setShortCriticalText(MonitorDisplay.shortCriticalText(snapshot))
+            runCatching {
+                builder.javaClass
+                    .getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType)
+                    .invoke(builder, true)
+            }
         }
+        return builder.build()
+    }
+
+    fun notifyChange(context: Context, snapshot: UsageSnapshot, delta: Int) {
+        if (!canNotify(context)) return
         createChannels(context)
         val sign = if (delta > 0) "+" else "−"
         val notification = Notification.Builder(context, CHANGE_CHANNEL)
@@ -48,8 +98,12 @@ object NotificationHelper {
             .setCategory(Notification.CATEGORY_STATUS)
             .build()
         context.getSystemService(NotificationManager::class.java)
-            .notify(CHANGE_NOTIFICATION_BASE_ID + (System.currentTimeMillis() % 100).toInt(), notification)
+            .notify(CHANGE_NOTIFICATION_ID, notification)
     }
+
+    private fun canNotify(context: Context): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
     private fun mainPendingIntent(context: Context): PendingIntent =
         PendingIntent.getActivity(

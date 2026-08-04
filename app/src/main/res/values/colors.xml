@@ -6,4 +6,9 @@
     <color name="widget_primary">#07122F</color>
     <color name="widget_secondary">#1E283C</color>
     <color name="widget_accent">#087F8C</color>
+    <color name="screen_background">#EDF3F5</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="text_primary">#07122F</color>
+    <color name="text_secondary">#4B5565</color>
+    <color name="theme_accent">#087F8C</color>
 </resources>

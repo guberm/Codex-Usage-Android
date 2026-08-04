@@ -5,4 +5,9 @@
     <color name="widget_primary">#F7F9FC</color>
     <color name="widget_secondary">#C7CDD6</color>
     <color name="widget_accent">#67E8F9</color>
+    <color name="screen_background">#0F1115</color>
+    <color name="surface">#1A1E24</color>
+    <color name="text_primary">#F7F9FC</color>
+    <color name="text_secondary">#C7CDD6</color>
+    <color name="theme_accent">#67E8F9</color>
 </resources>

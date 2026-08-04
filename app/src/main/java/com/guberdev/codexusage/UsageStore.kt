@@ -87,51 +87,9 @@ class UsageStore(context: Context) {
     }
 }
 
-data class MonitorSettings(
-    val checkEveryMinutes: Int = 60,
-    val notifyEveryPercent: Int = 1,
-)
-
-fun checkIntervalLabel(minutes: Int): String = when {
-    minutes < 60 -> "$minutes min"
-    minutes == 60 -> "1 hour"
-    else -> "${minutes / 60} hours"
-}
-
-class MonitorSettingsStore(context: Context) {
-    private val preferences = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-    fun load(): MonitorSettings = MonitorSettings(
-        checkEveryMinutes = (
-            if (preferences.contains(KEY_CHECK_MINUTES)) {
-                preferences.getInt(KEY_CHECK_MINUTES, 60)
-            } else {
-                preferences.getInt(KEY_CHECK_HOURS, 1) * 60
-            }
-        ).takeIf { it in CHECK_MINUTE_OPTIONS } ?: 60,
-        notifyEveryPercent = preferences.getInt(KEY_NOTIFY_PERCENT, 1)
-            .takeIf { it in NOTIFY_PERCENT_OPTIONS }
-            ?: 1,
-    )
-
-    fun save(settings: MonitorSettings) {
-        require(settings.checkEveryMinutes in CHECK_MINUTE_OPTIONS)
-        require(settings.notifyEveryPercent in NOTIFY_PERCENT_OPTIONS)
-        preferences.edit()
-            .putInt(KEY_CHECK_MINUTES, settings.checkEveryMinutes)
-            .remove(KEY_CHECK_HOURS)
-            .putInt(KEY_NOTIFY_PERCENT, settings.notifyEveryPercent)
-            .apply()
-    }
-
-    companion object {
-        val CHECK_MINUTE_OPTIONS = listOf(15, 30, 45, 60, 120, 240, 360, 720, 1440)
-        val NOTIFY_PERCENT_OPTIONS = listOf(1, 2, 5, 10, 20)
-        private const val PREFS = "codex_monitor_settings"
-        private const val KEY_CHECK_MINUTES = "check_minutes"
-        private const val KEY_CHECK_HOURS = "check_hours"
-        private const val KEY_NOTIFY_PERCENT = "notify_percent"
-    }
+object RefreshPolicy {
+    const val BACKGROUND_INTERVAL_MINUTES = 15L
+    const val NOTIFY_CHANGE_PERCENT = 1
 }
 
 object UsageText {

@@ -51,8 +51,8 @@ object RefreshCoordinator {
             CodexUsageApi().fetch(tokens)
         }
 
-        val settings = MonitorSettingsStore(context).load()
-        val delta = UsageStore(context).save(snapshot, settings.notifyEveryPercent)
+        val delta = UsageStore(context).save(snapshot, RefreshPolicy.NOTIFY_CHANGE_PERCENT)
+        NotificationHelper.showMonitor(context, snapshot)
         if (delta != null) NotificationHelper.notifyChange(context, snapshot, delta)
         UsageBackupJobService.schedule(context)
         return RefreshResult.Success(snapshot, delta)

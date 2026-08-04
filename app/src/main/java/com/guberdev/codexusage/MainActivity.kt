@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.NotificationManager
 import android.app.StatusBarManager
 import android.appwidget.AppWidgetManager
 import android.content.ClipData
@@ -11,7 +12,6 @@ import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.Icon
@@ -21,13 +21,11 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
-import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import java.util.concurrent.Executors
@@ -46,8 +44,7 @@ class MainActivity : Activity() {
     private lateinit var logoutButton: Button
     private lateinit var codePanel: LinearLayout
     private lateinit var codeText: TextView
-    private lateinit var checkSpinner: Spinner
-    private lateinit var notifySpinner: Spinner
+    private var promotionButton: Button? = null
     private var pendingDeviceCode: DeviceCode? = null
     @Volatile private var destroyed = false
 
@@ -55,15 +52,24 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(buildContent())
         requestNotificationPermission()
-        loadSettings()
         render(UsageStore(this).load())
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (SecureTokenStore(this).load() == null) return
+        RefreshCoordinator.refresh(this) { result ->
+            if (!destroyed && result is RefreshResult.Success) render(result.snapshot)
+        }
     }
 
     override fun onResume() {
         super.onResume()
         if (SecureTokenStore(this).load() != null) {
             UsageBackupJobService.schedule(this)
+            NotificationHelper.showMonitor(this)
         }
+        updatePromotionButton()
         render(UsageStore(this).load())
     }
 
@@ -77,7 +83,7 @@ class MainActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(30), dp(20), dp(40))
-            setBackgroundColor(Color.rgb(7, 18, 47))
+            setBackgroundColor(color(R.color.screen_background))
         }
 
         root.addView(
@@ -90,7 +96,7 @@ class MainActivity : Activity() {
         )
         root.addView(title("Codex Usage"))
         root.addView(
-            bodyText("Unofficial companion for OpenAI Codex", Color.rgb(173, 216, 230)).apply {
+            bodyText("Unofficial companion for OpenAI Codex", color(R.color.text_secondary)).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
             },
         )
@@ -100,12 +106,14 @@ class MainActivity : Activity() {
         percentText = TextView(this).apply {
             text = "—"
             textSize = 48f
-            setTextColor(Color.rgb(7, 18, 47))
+            setTextColor(color(R.color.text_primary))
             setTypeface(typeface, Typeface.BOLD)
             gravity = Gravity.CENTER_HORIZONTAL
         }
         usageCard.addView(percentText)
-        usageCard.addView(bodyText("remaining", Color.DKGRAY).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        usageCard.addView(bodyText("remaining", color(R.color.text_secondary)).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+        })
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
             progress = 0
@@ -117,9 +125,9 @@ class MainActivity : Activity() {
                 bottomMargin = dp(14)
             },
         )
-        resetText = bodyText("Reset: —", Color.rgb(30, 40, 60))
-        updatedText = bodyText("Not updated yet", Color.GRAY)
-        statusText = bodyText("Sign in with ChatGPT", Color.rgb(0, 105, 115))
+        resetText = bodyText("Reset: —", color(R.color.text_primary))
+        updatedText = bodyText("Not updated yet", color(R.color.text_secondary))
+        statusText = bodyText("Sign in with ChatGPT", color(R.color.theme_accent))
         usageCard.addView(resetText)
         usageCard.addView(updatedText)
         usageCard.addView(statusText)
@@ -128,45 +136,29 @@ class MainActivity : Activity() {
         root.addView(usageCard)
         root.addView(spacer(14))
 
-        val settingsCard = card()
-        settingsCard.addView(sectionTitle("Notification settings"))
-        settingsCard.addView(bodyText("Check every", Color.DKGRAY))
-        checkSpinner = Spinner(this)
-        checkSpinner.adapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_dropdown_item,
-            MonitorSettingsStore.CHECK_MINUTE_OPTIONS.map(::checkIntervalLabel),
-        )
-        settingsCard.addView(checkSpinner)
-        settingsCard.addView(bodyText("Notify every", Color.DKGRAY))
-        notifySpinner = Spinner(this)
-        notifySpinner.adapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_dropdown_item,
-            MonitorSettingsStore.NOTIFY_PERCENT_OPTIONS.map { "$it%" },
-        )
-        settingsCard.addView(notifySpinner)
-        settingsCard.addView(
-            Button(this).apply {
-                text = "Save settings"
-                setOnClickListener { saveSettings() }
-            },
-        )
-        settingsCard.addView(
-            bodyText(
-                "Default: check every hour and notify on a ±1% change.",
-                Color.GRAY,
-            ),
-        )
-        root.addView(settingsCard)
-        root.addView(spacer(14))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            val settingsCard = card()
+            settingsCard.addView(sectionTitle("Notification settings"))
+            promotionButton = Button(this).apply {
+                setOnClickListener { openPromotionSettings() }
+            }
+            settingsCard.addView(promotionButton)
+            settingsCard.addView(
+                bodyText(
+                    "Allow promoted notifications to keep the current percentage in the status bar.",
+                    color(R.color.text_secondary),
+                ),
+            )
+            root.addView(settingsCard)
+            root.addView(spacer(14))
+        }
 
         codePanel = card().apply { visibility = View.GONE }
         codePanel.addView(sectionTitle("Sign in with ChatGPT"))
-        codePanel.addView(bodyText("One-time code:", Color.DKGRAY))
+        codePanel.addView(bodyText("One-time code:", color(R.color.text_secondary)))
         codeText = TextView(this).apply {
             textSize = 30f
-            setTextColor(Color.rgb(7, 18, 47))
+            setTextColor(color(R.color.text_primary))
             setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(0, dp(12), 0, dp(12))
@@ -228,6 +220,7 @@ class MainActivity : Activity() {
                     runOnUiThread {
                         codePanel.visibility = View.GONE
                         statusText.text = "Signed in. Refreshing usage…"
+                        updatePromotionButton()
                         UsageBackupJobService.schedule(this)
                         refreshNow()
                     }
@@ -285,37 +278,13 @@ class MainActivity : Activity() {
                 bodyText(
                     "${UsageText.featureName(limit.feature)}: ${limit.window.remainingPercent}% • " +
                         "resets ${UsageText.resetDate(limit.window.resetAtEpochSeconds)}",
-                    Color.rgb(30, 40, 60),
+                    color(R.color.text_primary),
                 ),
             )
         }
         snapshot.creditBalance?.let {
-            additionalContainer.addView(bodyText("Credits: $it", Color.rgb(30, 40, 60)))
+            additionalContainer.addView(bodyText("Credits: $it", color(R.color.text_primary)))
         }
-    }
-
-    private fun loadSettings() {
-        val settings = MonitorSettingsStore(this).load()
-        checkSpinner.setSelection(
-            MonitorSettingsStore.CHECK_MINUTE_OPTIONS.indexOf(settings.checkEveryMinutes),
-        )
-        notifySpinner.setSelection(
-            MonitorSettingsStore.NOTIFY_PERCENT_OPTIONS.indexOf(settings.notifyEveryPercent),
-        )
-    }
-
-    private fun saveSettings() {
-        val settings = MonitorSettings(
-            checkEveryMinutes = MonitorSettingsStore.CHECK_MINUTE_OPTIONS[checkSpinner.selectedItemPosition],
-            notifyEveryPercent = MonitorSettingsStore.NOTIFY_PERCENT_OPTIONS[notifySpinner.selectedItemPosition],
-        )
-        MonitorSettingsStore(this).save(settings)
-        UsageBackupJobService.schedule(this)
-        Toast.makeText(
-            this,
-            "Check: ${checkIntervalLabel(settings.checkEveryMinutes)}, notify: ${settings.notifyEveryPercent}%",
-            Toast.LENGTH_SHORT,
-        ).show()
     }
 
     private fun requestTile() {
@@ -355,6 +324,7 @@ class MainActivity : Activity() {
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Sign out") { _, _ ->
                 UsageBackupJobService.cancel(this)
+                NotificationHelper.cancelMonitor(this)
                 SecureTokenStore(this).clear()
                 UsageStore(this).clear()
                 CodexUsageWidgetProvider.updateAll(this)
@@ -373,6 +343,39 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 300 && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            NotificationHelper.showMonitor(this)
+        }
+    }
+
+    private fun openPromotionSettings() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA) return
+        NotificationHelper.showMonitor(this)
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        runCatching { startActivity(intent) }
+            .onFailure {
+                Toast.makeText(this, "Status bar percentage settings are unavailable", Toast.LENGTH_LONG).show()
+            }
+    }
+
+    private fun updatePromotionButton() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA) return
+        promotionButton?.visibility = if (SecureTokenStore(this).load() == null) View.GONE else View.VISIBLE
+        val enabled = getSystemService(NotificationManager::class.java).canPostPromotedNotifications()
+        promotionButton?.text = if (enabled) {
+            "Status bar percentage: enabled"
+        } else {
+            "Enable % in status bar"
+        }
+    }
+
     private fun setBusy(message: String, busy: Boolean = true) {
         statusText.text = message
         setButtonsEnabled(!busy)
@@ -386,7 +389,7 @@ class MainActivity : Activity() {
     private fun title(text: String): TextView = TextView(this).apply {
         this.text = text
         textSize = 30f
-        setTextColor(Color.WHITE)
+        setTextColor(color(R.color.text_primary))
         setTypeface(typeface, Typeface.BOLD)
         gravity = Gravity.CENTER_HORIZONTAL
     }
@@ -394,7 +397,7 @@ class MainActivity : Activity() {
     private fun sectionTitle(text: String): TextView = TextView(this).apply {
         this.text = text
         textSize = 20f
-        setTextColor(Color.rgb(7, 18, 47))
+        setTextColor(color(R.color.text_primary))
         setTypeface(typeface, Typeface.BOLD)
         setPadding(0, 0, 0, dp(10))
     }
@@ -410,8 +413,8 @@ class MainActivity : Activity() {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(18), dp(18), dp(18), dp(18))
         background = GradientDrawable().apply {
-            setColor(Color.rgb(246, 253, 255))
-            cornerRadius = dp(18).toFloat()
+            setColor(color(R.color.surface))
+            cornerRadius = dp(8).toFloat()
         }
     }
 
@@ -429,4 +432,6 @@ class MainActivity : Activity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun color(resourceId: Int): Int = getColor(resourceId)
 }

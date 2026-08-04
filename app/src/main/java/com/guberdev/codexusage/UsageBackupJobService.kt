@@ -26,8 +26,7 @@ class UsageBackupJobService : JobService() {
         private const val JOB_ID = 48191
 
         fun schedule(context: Context) {
-            val minutes = MonitorSettingsStore(context).load().checkEveryMinutes.toLong()
-            val interval = TimeUnit.MINUTES.toMillis(minutes)
+            val interval = TimeUnit.MINUTES.toMillis(RefreshPolicy.BACKGROUND_INTERVAL_MINUTES)
                 .coerceAtLeast(JobInfo.getMinPeriodMillis())
             val info = JobInfo.Builder(
                 JOB_ID,
