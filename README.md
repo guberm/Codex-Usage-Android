@@ -6,9 +6,10 @@ An unofficial Android companion for tracking OpenAI Codex usage limits.
 
 - remaining percentage for the primary Codex usage limit;
 - date and local time of the next reset;
-- additional limits, such as GPT-5.3-Codex-Spark, when available for the account;
+- GPT-5.3-Codex-Spark daily and weekly windows, always shown as remaining percentage;
+- available banked reset count and a confirmed manual reset action;
 - Quick Settings tile with tap-to-refresh;
-- compact 2×1 Home screen widget with light/dark appearance, remaining percentage, reset time, and tap-to-refresh;
+- compact 2×2 Home screen widget with Codex/Spark usage, reset count, manual reset, and tap-to-refresh;
 - periodic background monitoring and a persistent usage notification that resume after a device restart;
 - readable remaining percentage in the notification, Quick Settings tile, and Home screen widget;
 - Android 16+ status-bar percentage chip after enabling promoted notifications in the app;
@@ -18,7 +19,7 @@ An unofficial Android companion for tracking OpenAI Codex usage limits.
 - native light and dark themes that follow the device setting;
 - secure ChatGPT device login without an API key or copied browser cookies.
 
-Defaults: check every hour and notify on a `±1%` change.
+Defaults: check every 15 minutes and notify on a `±1%` change.
 
 ## Sign-in and security
 
@@ -26,6 +27,10 @@ The app uses the Codex device-authorization flow and retrieves data from the
 same ChatGPT endpoint used by Codex CLI:
 
 `GET https://chatgpt.com/backend-api/wham/usage`
+
+Banked resets use the Codex reset-credit endpoint after an explicit confirmation.
+Each request ID is persisted before sending so an uncertain network result can be
+retried without spending a second reset.
 
 OAuth tokens are encrypted locally with a key stored in Android Keystore.
 Application backup is disabled. Browser cookies and OpenAI API keys are not used.

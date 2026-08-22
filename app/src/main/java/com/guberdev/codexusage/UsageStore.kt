@@ -4,6 +4,7 @@ import android.content.Context
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -19,13 +20,30 @@ class UsageStore(context: Context) {
             buildList {
                 for (index in 0 until array.length()) {
                     val item = array.getJSONObject(index)
+                    val windows = item.optJSONArray("windows")?.let { storedWindows ->
+                        buildList {
+                            for (windowIndex in 0 until storedWindows.length()) {
+                                val window = storedWindows.getJSONObject(windowIndex)
+                                add(
+                                    UsageWindow(
+                                        remainingPercent = window.getInt("remaining"),
+                                        resetAtEpochSeconds = window.optLong("reset").takeIf { it > 0 },
+                                        windowSeconds = window.optLong("seconds").takeIf { it > 0 },
+                                    ),
+                                )
+                            }
+                        }
+                    } ?: listOf(
+                        UsageWindow(
+                            remainingPercent = item.getInt("remaining"),
+                            resetAtEpochSeconds = item.optLong("reset").takeIf { it > 0 },
+                        ),
+                    )
                     add(
                         AdditionalUsageLimit(
                             feature = item.getString("feature"),
-                            window = UsageWindow(
-                                remainingPercent = item.getInt("remaining"),
-                                resetAtEpochSeconds = item.optLong("reset").takeIf { it > 0 },
-                            ),
+                            name = item.optString("name").takeIf { it.isNotBlank() },
+                            windows = windows,
                         ),
                     )
                 }
@@ -36,6 +54,7 @@ class UsageStore(context: Context) {
             primary = UsageWindow(primary, reset),
             additionalLimits = additional,
             creditBalance = preferences.getString(KEY_CREDITS, null),
+            availableResetCount = preferences.getInt(KEY_AVAILABLE_RESETS, 0).coerceAtLeast(0),
             fetchedAtEpochMillis = preferences.getLong(KEY_FETCHED_AT, 0L),
         )
     }
@@ -54,8 +73,20 @@ class UsageStore(context: Context) {
                 put(
                     JSONObject()
                         .put("feature", item.feature)
-                        .put("remaining", item.window.remainingPercent)
-                        .put("reset", item.window.resetAtEpochSeconds),
+                        .put("name", item.name)
+                        .put(
+                            "windows",
+                            JSONArray().apply {
+                                item.windows.forEach { window ->
+                                    put(
+                                        JSONObject()
+                                            .put("remaining", window.remainingPercent)
+                                            .put("reset", window.resetAtEpochSeconds)
+                                            .put("seconds", window.windowSeconds),
+                                    )
+                                }
+                            },
+                        ),
                 )
             }
         }
@@ -64,6 +95,7 @@ class UsageStore(context: Context) {
             .putLong(KEY_RESET, snapshot.primary.resetAtEpochSeconds ?: -1L)
             .putString(KEY_PLAN, snapshot.planType)
             .putString(KEY_CREDITS, snapshot.creditBalance)
+            .putInt(KEY_AVAILABLE_RESETS, snapshot.availableResetCount)
             .putString(KEY_ADDITIONAL, additional.toString())
             .putLong(KEY_FETCHED_AT, snapshot.fetchedAtEpochMillis)
             .putInt(KEY_NOTIFICATION_BASELINE, change.nextBaseline)
@@ -81,9 +113,34 @@ class UsageStore(context: Context) {
         private const val KEY_RESET = "reset"
         private const val KEY_PLAN = "plan"
         private const val KEY_CREDITS = "credits"
+        private const val KEY_AVAILABLE_RESETS = "available_resets"
         private const val KEY_ADDITIONAL = "additional"
         private const val KEY_FETCHED_AT = "fetched_at"
         private const val KEY_NOTIFICATION_BASELINE = "notification_baseline"
+    }
+}
+
+class PendingResetStore(context: Context) {
+    private val preferences = context.applicationContext
+        .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    @Synchronized
+    fun getOrCreate(): String {
+        preferences.getString(KEY_REQUEST_ID, null)?.let { return it }
+        val requestId = UUID.randomUUID().toString()
+        check(preferences.edit().putString(KEY_REQUEST_ID, requestId).commit()) {
+            "Could not persist the reset request"
+        }
+        return requestId
+    }
+
+    fun clear() {
+        preferences.edit().remove(KEY_REQUEST_ID).apply()
+    }
+
+    companion object {
+        private const val PREFS = "codex_reset_request"
+        private const val KEY_REQUEST_ID = "pending_request_id"
     }
 }
 
@@ -109,4 +166,21 @@ object UsageText {
         "codex_bengalfox" -> "GPT-5.3-Codex-Spark"
         else -> feature.replace('_', ' ')
     }
+
+    fun windowName(windowSeconds: Long?): String = when (windowSeconds) {
+        in 20L * 60 * 60..28L * 60 * 60 -> "Daily"
+        in 6L * 24 * 60 * 60..8L * 24 * 60 * 60 -> "Weekly"
+        in 27L * 24 * 60 * 60..32L * 24 * 60 * 60 -> "Monthly"
+        in 1L..23L * 60 * 60 -> "${windowSeconds!! / 3600}h"
+        else -> "Limit"
+    }
+
+    fun limitSummary(limit: AdditionalUsageLimit): String =
+        limit.windows
+            .sortedBy { it.windowSeconds ?: Long.MAX_VALUE }
+            .joinToString(" · ") { window ->
+                val label = windowName(window.windowSeconds)
+                if (label == "Limit") "${window.remainingPercent}% left"
+                else "$label ${window.remainingPercent}% left"
+            }
 }

@@ -3,10 +3,14 @@
     <string name="app_name">Codex Usage</string>
     <string name="tile_name">Codex Usage</string>
     <string name="widget_name">Codex Usage</string>
-    <string name="widget_description">Remaining Codex usage and reset time</string>
+    <string name="widget_description">Codex and Spark usage with manual resets</string>
     <string name="widget_logo_description">OpenAI Codex</string>
     <string name="widget_remaining_label">Codex remaining</string>
     <string name="widget_refresh">Refresh usage</string>
+    <string name="widget_spark_label">SPARK</string>
+    <string name="widget_spark_unavailable">Spark unavailable</string>
+    <string name="widget_no_resets">0 resets</string>
+    <string name="widget_use_reset">Use reset</string>
     <string name="widget_empty_percent">—</string>
     <string name="widget_sign_in">Tap to sign in</string>
 </resources>

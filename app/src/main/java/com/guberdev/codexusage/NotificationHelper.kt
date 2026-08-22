@@ -8,11 +8,20 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.Icon
 import android.os.Build
 
 object MonitorDisplay {
     fun title(snapshot: UsageSnapshot?): String =
-        snapshot?.let { "${it.primary.remainingPercent}% Codex remaining" } ?: "Codex Usage monitor"
+        snapshot?.let {
+            "Codex ${it.primary.remainingPercent}% left · " +
+                "${it.availableResetCount} ${if (it.availableResetCount == 1) "reset" else "resets"}"
+        } ?: "Codex Usage monitor"
+
+    fun content(snapshot: UsageSnapshot?): String = snapshot?.let {
+        val spark = it.additionalLimits.firstOrNull { limit -> limit.feature == "codex_bengalfox" }
+        spark?.let { limit -> "Spark: ${UsageText.limitSummary(limit)}" } ?: "Spark unavailable"
+    } ?: "Waiting for the first check"
 
     fun shortCriticalText(snapshot: UsageSnapshot?): String =
         snapshot?.let { "${it.primary.remainingPercent}%" } ?: "Codex"
@@ -59,18 +68,25 @@ object NotificationHelper {
     }
 
     private fun monitorNotification(context: Context, snapshot: UsageSnapshot?): Notification {
-        val text = snapshot?.let {
-            "${it.primary.remainingPercent}% remaining • resets " +
-                UsageText.resetDate(it.primary.resetAtEpochSeconds)
-        } ?: "Waiting for the first check"
+        val text = MonitorDisplay.content(snapshot)
         val builder = Notification.Builder(context, MONITOR_CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_usage)
             .setContentTitle(MonitorDisplay.title(snapshot))
             .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
             .setContentIntent(mainPendingIntent(context))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_STATUS)
+        if ((snapshot?.availableResetCount ?: 0) > 0) {
+            builder.addAction(
+                Notification.Action.Builder(
+                    Icon.createWithResource(context, R.drawable.ic_refresh),
+                    "Use reset",
+                    manualResetPendingIntent(context),
+                ).build(),
+            )
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
             builder.setShortCriticalText(MonitorDisplay.shortCriticalText(snapshot))
             runCatching {
@@ -110,6 +126,16 @@ object NotificationHelper {
             context,
             0,
             Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+    private fun manualResetPendingIntent(context: Context): PendingIntent =
+        PendingIntent.getActivity(
+            context,
+            1,
+            Intent(context, MainActivity::class.java)
+                .setAction(MainActivity.ACTION_CONFIRM_RESET)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )

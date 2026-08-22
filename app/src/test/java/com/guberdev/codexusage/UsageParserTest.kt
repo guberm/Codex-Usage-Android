@@ -55,7 +55,7 @@ class UsageParserTest {
     }
 
     @Test
-    fun `additional limits are preserved and missing reset is nullable`() {
+    fun `spark daily and weekly windows are preserved as remaining percentages`() {
         val snapshot = parser.parse(
             """
             {
@@ -65,20 +65,49 @@ class UsageParserTest {
               },
               "additional_rate_limits": [
                 {
+                  "limit_name": "GPT-5.3-Codex-Spark",
                   "metered_feature": "codex_bengalfox",
                   "rate_limit": {
-                    "primary_window": {"used_percent": 0}
+                    "primary_window": {
+                      "used_percent": 25,
+                      "limit_window_seconds": 86400,
+                      "reset_at": 1785611900
+                    },
+                    "secondary_window": {
+                      "used_percent": 60,
+                      "limit_window_seconds": 604800,
+                      "reset_at": 1786216700
+                    }
                   }
                 }
-              ]
+              ],
+              "rate_limit_reset_credits": {"available_count": 2}
             }
             """.trimIndent(),
         )
 
         assertEquals(1, snapshot.additionalLimits.size)
-        assertEquals("codex_bengalfox", snapshot.additionalLimits.single().feature)
-        assertEquals(100, snapshot.additionalLimits.single().window.remainingPercent)
-        assertNull(snapshot.additionalLimits.single().window.resetAtEpochSeconds)
+        val spark = snapshot.additionalLimits.single()
+        assertEquals("codex_bengalfox", spark.feature)
+        assertEquals("GPT-5.3-Codex-Spark", spark.name)
+        assertEquals(listOf(75, 40), spark.windows.map { it.remainingPercent })
+        assertEquals(listOf(86400L, 604800L), spark.windows.map { it.windowSeconds })
+        assertEquals(2, snapshot.availableResetCount)
+    }
+
+    @Test
+    fun `missing reset credit summary means zero available resets`() {
+        val snapshot = parser.parse(
+            """
+            {
+              "rate_limit": {
+                "primary_window": {"used_percent": 0}
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(0, snapshot.availableResetCount)
     }
 
     @Test(expected = UsageParseException::class)

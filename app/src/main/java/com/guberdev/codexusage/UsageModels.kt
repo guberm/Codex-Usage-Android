@@ -10,11 +10,13 @@ import org.json.JSONObject
 data class UsageWindow(
     val remainingPercent: Int,
     val resetAtEpochSeconds: Long?,
+    val windowSeconds: Long? = null,
 )
 
 data class AdditionalUsageLimit(
     val feature: String,
-    val window: UsageWindow,
+    val name: String?,
+    val windows: List<UsageWindow>,
 )
 
 data class UsageSnapshot(
@@ -22,6 +24,7 @@ data class UsageSnapshot(
     val primary: UsageWindow,
     val additionalLimits: List<AdditionalUsageLimit>,
     val creditBalance: String?,
+    val availableResetCount: Int = 0,
     val fetchedAtEpochMillis: Long = System.currentTimeMillis(),
 )
 
@@ -41,6 +44,10 @@ class UsageParser {
                 primary = parseWindow(primaryWindow),
                 additionalLimits = parseAdditional(root.optJSONArray("additional_rate_limits")),
                 creditBalance = root.optJSONObject("credits")?.optionalString("balance"),
+                availableResetCount = root.optJSONObject("rate_limit_reset_credits")
+                    ?.optInt("available_count", 0)
+                    ?.coerceAtLeast(0)
+                    ?: 0,
             )
         } catch (error: UsageParseException) {
             throw error
@@ -61,7 +68,12 @@ class UsageParser {
         } else {
             null
         }
-        return UsageWindow(remainingPercent = remaining, resetAtEpochSeconds = resetAt)
+        val windowSeconds = if (json.has("limit_window_seconds") && !json.isNull("limit_window_seconds")) {
+            json.getLong("limit_window_seconds").takeIf { it > 0 }
+        } else {
+            null
+        }
+        return UsageWindow(remaining, resetAt, windowSeconds)
     }
 
     private fun parseAdditional(items: JSONArray?): List<AdditionalUsageLimit> {
@@ -70,10 +82,20 @@ class UsageParser {
             for (index in 0 until items.length()) {
                 val item = items.optJSONObject(index) ?: continue
                 val feature = item.optionalString("metered_feature") ?: continue
-                val window = item.optJSONObject("rate_limit")
-                    ?.optJSONObject("primary_window")
-                    ?: continue
-                add(AdditionalUsageLimit(feature = feature, window = parseWindow(window)))
+                val rateLimit = item.optJSONObject("rate_limit") ?: continue
+                val windows = listOfNotNull(
+                    rateLimit.optJSONObject("primary_window")?.let(::parseWindow),
+                    rateLimit.optJSONObject("secondary_window")?.let(::parseWindow),
+                )
+                if (windows.isNotEmpty()) {
+                    add(
+                        AdditionalUsageLimit(
+                            feature = feature,
+                            name = item.optionalString("limit_name"),
+                            windows = windows,
+                        ),
+                    )
+                }
             }
         }
     }

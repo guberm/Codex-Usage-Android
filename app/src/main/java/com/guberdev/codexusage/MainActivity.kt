@@ -32,6 +32,10 @@ import java.util.concurrent.Executors
 
 @SuppressLint("SetTextI18n")
 class MainActivity : Activity() {
+    companion object {
+        const val ACTION_CONFIRM_RESET = "com.guberdev.codexusage.action.CONFIRM_RESET"
+    }
+
     private val executor = Executors.newSingleThreadExecutor()
     private lateinit var percentText: TextView
     private lateinit var resetText: TextView
@@ -39,6 +43,8 @@ class MainActivity : Activity() {
     private lateinit var statusText: TextView
     private lateinit var progress: ProgressBar
     private lateinit var additionalContainer: LinearLayout
+    private lateinit var manualResetCountText: TextView
+    private lateinit var useResetButton: Button
     private lateinit var loginButton: Button
     private lateinit var refreshButton: Button
     private lateinit var logoutButton: Button
@@ -53,6 +59,13 @@ class MainActivity : Activity() {
         setContentView(buildContent())
         requestNotificationPermission()
         render(UsageStore(this).load())
+        maybeConfirmReset(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        maybeConfirmReset(intent)
     }
 
     override fun onStart() {
@@ -134,6 +147,27 @@ class MainActivity : Activity() {
         additionalContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         usageCard.addView(additionalContainer)
         root.addView(usageCard)
+        root.addView(spacer(14))
+
+        val manualResetCard = card()
+        manualResetCard.addView(sectionTitle("Manual resets"))
+        manualResetCountText = TextView(this).apply {
+            text = "0 available"
+            textSize = 30f
+            setTextColor(color(R.color.text_primary))
+            setTypeface(typeface, Typeface.BOLD)
+        }
+        manualResetCard.addView(manualResetCountText)
+        manualResetCard.addView(
+            bodyText(
+                "A banked reset immediately refreshes the usage windows reported by OpenAI.",
+                color(R.color.text_secondary),
+            ),
+        )
+        useResetButton = actionButton("Use reset") { confirmManualReset() }
+        useResetButton.isEnabled = false
+        manualResetCard.addView(useResetButton)
+        root.addView(manualResetCard)
         root.addView(spacer(14))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
@@ -259,6 +293,7 @@ class MainActivity : Activity() {
         loginButton.visibility = if (signedIn) View.GONE else View.VISIBLE
         logoutButton.visibility = if (signedIn) View.VISIBLE else View.GONE
         refreshButton.isEnabled = signedIn
+        useResetButton.isEnabled = signedIn && (snapshot?.availableResetCount ?: 0) > 0
         statusText.text = tokens?.signedInText() ?: "Sign in with ChatGPT"
         if (snapshot == null) {
             percentText.text = "—"
@@ -266,6 +301,7 @@ class MainActivity : Activity() {
             resetText.text = "Reset: —"
             updatedText.text = "Not updated yet"
             additionalContainer.removeAllViews()
+            manualResetCountText.text = "0 available"
             return
         }
         percentText.text = "${snapshot.primary.remainingPercent}%"
@@ -274,14 +310,25 @@ class MainActivity : Activity() {
         updatedText.text = "Updated ${UsageText.resetDate(snapshot.fetchedAtEpochMillis / 1000L)}"
         additionalContainer.removeAllViews()
         snapshot.additionalLimits.forEach { limit ->
+            additionalContainer.addView(spacer(14))
             additionalContainer.addView(
-                bodyText(
-                    "${UsageText.featureName(limit.feature)}: ${limit.window.remainingPercent}% • " +
-                        "resets ${UsageText.resetDate(limit.window.resetAtEpochSeconds)}",
-                    color(R.color.text_primary),
-                ),
+                bodyText(limit.name ?: UsageText.featureName(limit.feature), color(R.color.theme_accent)).apply {
+                    textSize = 17f
+                    setTypeface(typeface, Typeface.BOLD)
+                },
             )
+            limit.windows.sortedBy { it.windowSeconds ?: Long.MAX_VALUE }.forEach { window ->
+                additionalContainer.addView(
+                    bodyText(
+                        "${UsageText.windowName(window.windowSeconds)}: ${window.remainingPercent}% left · " +
+                            "resets ${UsageText.resetDate(window.resetAtEpochSeconds)}",
+                        color(R.color.text_primary),
+                    ),
+                )
+            }
         }
+        manualResetCountText.text =
+            "${snapshot.availableResetCount} ${if (snapshot.availableResetCount == 1) "available reset" else "available resets"}"
         snapshot.creditBalance?.let {
             additionalContainer.addView(bodyText("Credits: $it", color(R.color.text_primary)))
         }
@@ -326,12 +373,87 @@ class MainActivity : Activity() {
                 UsageBackupJobService.cancel(this)
                 NotificationHelper.cancelMonitor(this)
                 SecureTokenStore(this).clear()
+                PendingResetStore(this).clear()
                 UsageStore(this).clear()
                 CodexUsageWidgetProvider.updateAll(this)
                 render(null)
                 statusText.text = "Signed out"
             }
             .show()
+    }
+
+    private fun maybeConfirmReset(intent: Intent?) {
+        if (intent?.action != ACTION_CONFIRM_RESET) return
+        intent.action = null
+        confirmManualReset()
+    }
+
+    private fun confirmManualReset() {
+        val snapshot = UsageStore(this).load()
+        if (SecureTokenStore(this).load() == null) {
+            Toast.makeText(this, "Sign in before using a reset", Toast.LENGTH_LONG).show()
+            return
+        }
+        if ((snapshot?.availableResetCount ?: 0) <= 0) {
+            Toast.makeText(this, "No manual resets are available", Toast.LENGTH_LONG).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Use one manual reset?")
+            .setMessage(
+                "This immediately resets the usage windows reported by OpenAI and uses one banked reset. " +
+                    "It cannot be undone.",
+            )
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Use reset") { _, _ -> consumeManualReset() }
+            .show()
+    }
+
+    private fun consumeManualReset() {
+        setBusy("Using reset…")
+        useResetButton.isEnabled = false
+        executor.execute {
+            val pendingStore = PendingResetStore(this)
+            try {
+                val tokenStore = SecureTokenStore(this)
+                val original = tokenStore.load() ?: error("Sign in with ChatGPT")
+                val authClient = CodexAuthClient()
+                var tokens = authClient.ensureFresh(original)
+                if (tokens != original) tokenStore.save(tokens)
+                val requestId = pendingStore.getOrCreate()
+                val response = try {
+                    CodexUsageApi().consumeReset(tokens, requestId)
+                } catch (error: HttpStatusException) {
+                    if (error.statusCode != 401) throw error
+                    tokens = authClient.refresh(tokens)
+                    tokenStore.save(tokens)
+                    CodexUsageApi().consumeReset(tokens, requestId)
+                }
+                pendingStore.clear()
+                if (!destroyed) runOnUiThread {
+                    statusText.text = when (response.outcome) {
+                        ResetOutcome.RESET -> "Reset applied to ${response.windowsReset} usage windows. Refreshing…"
+                        ResetOutcome.ALREADY_REDEEMED -> "Reset already applied. Refreshing…"
+                        ResetOutcome.NOTHING_TO_RESET -> "No usage window needs a reset"
+                        ResetOutcome.NO_CREDIT -> "No manual reset is available"
+                    }
+                    RefreshCoordinator.refresh(this) { result ->
+                        if (!destroyed && result is RefreshResult.Success) render(result.snapshot)
+                        setButtonsEnabled(true)
+                    }
+                }
+            } catch (error: Throwable) {
+                if (error is HttpStatusException && error.statusCode in 400..499) pendingStore.clear()
+                if (!destroyed) runOnUiThread {
+                    statusText.text = if (error is HttpStatusException) {
+                        "Could not use reset (HTTP ${error.statusCode})"
+                    } else {
+                        "Reset result is unknown. Tap Use reset to retry safely."
+                    }
+                    setButtonsEnabled(true)
+                }
+            }
+        }
     }
 
     private fun requestNotificationPermission() {
@@ -384,6 +506,7 @@ class MainActivity : Activity() {
     private fun setButtonsEnabled(enabled: Boolean) {
         loginButton.isEnabled = enabled
         refreshButton.isEnabled = enabled && SecureTokenStore(this).load() != null
+        useResetButton.isEnabled = enabled && (UsageStore(this).load()?.availableResetCount ?: 0) > 0
     }
 
     private fun title(text: String): TextView = TextView(this).apply {

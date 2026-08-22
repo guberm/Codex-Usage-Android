@@ -18,6 +18,17 @@ object WidgetDisplay {
 
     fun progress(snapshot: UsageSnapshot?): Int =
         snapshot?.primary?.remainingPercent?.coerceIn(0, 100) ?: 0
+
+    fun spark(snapshot: UsageSnapshot?): String = snapshot
+        ?.additionalLimits
+        ?.firstOrNull { it.feature == "codex_bengalfox" }
+        ?.let(UsageText::limitSummary)
+        ?: "Spark unavailable"
+
+    fun manualResets(snapshot: UsageSnapshot?): String {
+        val count = snapshot?.availableResetCount ?: 0
+        return "$count ${if (count == 1) "reset" else "resets"}"
+    }
 }
 
 class CodexUsageWidgetProvider : AppWidgetProvider() {
@@ -59,6 +70,9 @@ class CodexUsageWidgetProvider : AppWidgetProvider() {
                     setTextViewText(R.id.widget_percent, WidgetDisplay.percent(snapshot))
                     setProgressBar(R.id.widget_progress, 100, WidgetDisplay.progress(snapshot), false)
                     setTextViewText(R.id.widget_reset, WidgetDisplay.reset(snapshot))
+                    setTextViewText(R.id.widget_spark, WidgetDisplay.spark(snapshot))
+                    setTextViewText(R.id.widget_manual_resets, WidgetDisplay.manualResets(snapshot))
+                    setBoolean(R.id.widget_use_reset, "setEnabled", (snapshot?.availableResetCount ?: 0) > 0)
                     setOnClickPendingIntent(
                         R.id.widget_root,
                         PendingIntent.getActivity(
@@ -75,6 +89,16 @@ class CodexUsageWidgetProvider : AppWidgetProvider() {
                             widgetId,
                             Intent(context, CodexUsageWidgetProvider::class.java)
                                 .setAction(ACTION_REFRESH),
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                        ),
+                    )
+                    setOnClickPendingIntent(
+                        R.id.widget_use_reset,
+                        PendingIntent.getActivity(
+                            context,
+                            widgetId + 10_000,
+                            Intent(context, MainActivity::class.java)
+                                .setAction(MainActivity.ACTION_CONFIRM_RESET),
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                         ),
                     )

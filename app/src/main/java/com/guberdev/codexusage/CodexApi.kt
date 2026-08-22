@@ -45,7 +45,7 @@ internal fun <T> pollUntilAuthorized(
     return null
 }
 
-private object CodexHttp {
+internal object CodexHttp {
     fun request(
         method: String,
         url: String,
@@ -59,7 +59,7 @@ private object CodexHttp {
             readTimeout = 20_000
             useCaches = false
             setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "codex-usage-android/0.1.10")
+            setRequestProperty("User-Agent", "codex-usage-android/0.1.17")
             headers.forEach { (name, value) -> setRequestProperty(name, value) }
             if (body != null) {
                 doOutput = true
@@ -178,4 +178,45 @@ class CodexUsageApi(private val parser: UsageParser = UsageParser()) {
                 ),
             ),
         )
+
+    fun consumeReset(tokens: SessionTokens, redeemRequestId: String): ResetResponse {
+        require(redeemRequestId.isNotBlank())
+        return ResetResponseParser.parse(
+            CodexHttp.request(
+                method = "POST",
+                url = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits/consume",
+                body = JSONObject().put("redeem_request_id", redeemRequestId).toString(),
+                headers = mapOf(
+                    "Authorization" to "Bearer ${tokens.accessToken}",
+                    "ChatGPT-Account-Id" to tokens.accountId,
+                ),
+            ),
+        )
+    }
+}
+
+enum class ResetOutcome {
+    RESET,
+    NOTHING_TO_RESET,
+    NO_CREDIT,
+    ALREADY_REDEEMED,
+}
+
+data class ResetResponse(
+    val outcome: ResetOutcome,
+    val windowsReset: Int,
+)
+
+object ResetResponseParser {
+    fun parse(json: String): ResetResponse {
+        val root = JSONObject(json)
+        val outcome = when (root.getString("code")) {
+            "reset" -> ResetOutcome.RESET
+            "nothing_to_reset" -> ResetOutcome.NOTHING_TO_RESET
+            "no_credit" -> ResetOutcome.NO_CREDIT
+            "already_redeemed" -> ResetOutcome.ALREADY_REDEEMED
+            else -> throw UsageParseException("Unknown reset response")
+        }
+        return ResetResponse(outcome, root.optInt("windows_reset", 0).coerceAtLeast(0))
+    }
 }

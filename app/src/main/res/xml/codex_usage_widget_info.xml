@@ -3,10 +3,10 @@
     android:description="@string/widget_description"
     android:initialLayout="@layout/codex_usage_widget"
     android:minWidth="110dp"
-    android:minHeight="76dp"
+    android:minHeight="180dp"
     android:previewLayout="@layout/codex_usage_widget"
-    android:resizeMode="horizontal"
+    android:resizeMode="horizontal|vertical"
     android:targetCellWidth="2"
-    android:targetCellHeight="1"
+    android:targetCellHeight="2"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen" />
