@@ -32,5 +32,6 @@ class WidgetRemoteViewsInflationTest {
         assertFalse("RemoteViews inflation timed out", inflater.isAlive)
         assertNull("RemoteViews failed to inflate: ${failure.get()}", failure.get())
         assertNotNull(inflatedView.get())
+        assertNotNull(inflatedView.get()?.findViewById<android.view.View>(R.id.widget_secondary_balance))
     }
 }

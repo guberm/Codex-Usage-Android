@@ -33,12 +33,13 @@ class UsageStoreWeeklyTest {
             val restored = requireNotNull(UsageStore(context).load())
             assertEquals(snapshot, restored)
             assertEquals(18000L, restored.primary.windowSeconds)
-            assertTrue(MonitorDisplay.content(restored).contains("Weekly 40% left"))
-            assertTrue(WidgetDisplay.reset(restored).contains("Weekly 40% left"))
+            assertTrue(MonitorDisplay.title(restored).contains("Weekly 40%"))
+            assertEquals("Weekly 40% left", WidgetDisplay.secondaryBalance(restored))
 
             store.save(UsageParser().parse("""{"rate_limit":{"primary_window":{"used_percent":25}}}"""))
             assertFalse(MonitorDisplay.content(store.load()).contains("Weekly"))
             assertEquals("Reset: —", WidgetDisplay.reset(store.load()))
+            assertEquals(null, WidgetDisplay.secondaryBalance(store.load()))
         } finally {
             store.clear()
         }

@@ -21,11 +21,13 @@ class WidgetDisplayTest {
             ),
             creditBalance = null,
             availableResetCount = 2,
+            secondary = UsageWindow(remainingPercent = 45, resetAtEpochSeconds = null, windowSeconds = 604_800),
         )
 
         assertEquals("53%", WidgetDisplay.percent(snapshot))
         assertEquals(53, WidgetDisplay.progress(snapshot))
         assertEquals("Reset: —", WidgetDisplay.reset(snapshot))
+        assertEquals("Weekly 45% left", WidgetDisplay.secondaryBalance(snapshot))
         assertEquals("Daily 80% left · Weekly 45% left", WidgetDisplay.spark(snapshot))
         assertEquals("2 resets", WidgetDisplay.manualResets(snapshot))
     }
@@ -35,6 +37,7 @@ class WidgetDisplayTest {
         assertEquals("—", WidgetDisplay.percent(null))
         assertEquals(0, WidgetDisplay.progress(null))
         assertEquals("Tap to sign in", WidgetDisplay.reset(null))
+        assertEquals(null, WidgetDisplay.secondaryBalance(null))
         assertEquals("Spark unavailable", WidgetDisplay.spark(null))
         assertEquals("0 resets", WidgetDisplay.manualResets(null))
     }

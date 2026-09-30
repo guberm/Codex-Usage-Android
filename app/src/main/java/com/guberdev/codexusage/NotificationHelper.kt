@@ -14,20 +14,25 @@ import android.os.Build
 object MonitorDisplay {
     fun title(snapshot: UsageSnapshot?): String =
         snapshot?.let {
-            "Codex ${it.primary.remainingPercent}% left · " +
-                "${it.availableResetCount} ${if (it.availableResetCount == 1) "reset" else "resets"}"
+            if (it.secondary != null) {
+                "${UsageText.windowName(it.primary.windowSeconds)} ${it.primary.remainingPercent}% · " +
+                    "${UsageText.windowName(it.secondary.windowSeconds)} ${it.secondary.remainingPercent}%"
+            } else {
+                "Codex ${it.primary.remainingPercent}% left · " +
+                    "${it.availableResetCount} ${if (it.availableResetCount == 1) "reset" else "resets"}"
+            }
         } ?: "Codex Usage monitor"
 
     fun content(snapshot: UsageSnapshot?): String = snapshot?.let {
         val spark = it.additionalLimits.firstOrNull { limit -> limit.feature == "codex_bengalfox" }
-        listOfNotNull(
-            it.secondary?.let(UsageText::windowSummary),
-            spark?.let { limit -> "Spark: ${UsageText.limitSummary(limit)}" } ?: "Spark unavailable",
-        ).joinToString(" · ")
+        spark?.let { limit -> "Spark: ${UsageText.limitSummary(limit)}" } ?: "Spark unavailable"
     } ?: "Waiting for the first check"
 
     fun shortCriticalText(snapshot: UsageSnapshot?): String =
-        snapshot?.let { "${it.primary.remainingPercent}%" } ?: "Codex"
+        snapshot?.let {
+            it.secondary?.let { secondary -> "${it.primary.remainingPercent}/${secondary.remainingPercent}" }
+                ?: "${it.primary.remainingPercent}%"
+        } ?: "Codex"
 }
 
 object NotificationHelper {

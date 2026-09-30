@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.view.View
 import android.widget.RemoteViews
 
 object WidgetDisplay {
@@ -13,13 +14,11 @@ object WidgetDisplay {
         snapshot?.let { "${it.primary.remainingPercent}%" } ?: "—"
 
     fun reset(snapshot: UsageSnapshot?): String =
-        snapshot?.let {
-            "Reset: ${UsageText.shortResetDate(it.primary.resetAtEpochSeconds)}" +
-                (it.secondary?.let { window ->
-                    "\n${UsageText.windowSummary(window)} · ${UsageText.shortResetDate(window.resetAtEpochSeconds)}"
-                } ?: "")
-        }
+        snapshot?.let { "Reset: ${UsageText.shortResetDate(it.primary.resetAtEpochSeconds)}" }
             ?: "Tap to sign in"
+
+    fun secondaryBalance(snapshot: UsageSnapshot?): String? =
+        snapshot?.secondary?.let(UsageText::windowSummary)
 
     fun progress(snapshot: UsageSnapshot?): Int =
         snapshot?.primary?.remainingPercent?.coerceIn(0, 100) ?: 0
@@ -74,6 +73,12 @@ class CodexUsageWidgetProvider : AppWidgetProvider() {
                 val views = RemoteViews(context.packageName, R.layout.codex_usage_widget).apply {
                     setTextViewText(R.id.widget_percent, WidgetDisplay.percent(snapshot))
                     setProgressBar(R.id.widget_progress, 100, WidgetDisplay.progress(snapshot), false)
+                    val secondaryBalance = WidgetDisplay.secondaryBalance(snapshot)
+                    setTextViewText(R.id.widget_secondary_balance, secondaryBalance.orEmpty())
+                    setViewVisibility(
+                        R.id.widget_secondary_balance,
+                        if (secondaryBalance == null) View.GONE else View.VISIBLE,
+                    )
                     setTextViewText(R.id.widget_reset, WidgetDisplay.reset(snapshot))
                     setTextViewText(R.id.widget_spark, WidgetDisplay.spark(snapshot))
                     setTextViewText(R.id.widget_manual_resets, WidgetDisplay.manualResets(snapshot))
