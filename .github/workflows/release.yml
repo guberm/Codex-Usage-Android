@@ -46,11 +46,12 @@ jobs:
           CODEX_USAGE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           CODEX_USAGE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          ./gradlew test lint bundleRelease assembleRelease --no-daemon --max-workers=1
+          ./gradlew test lint bundleRelease assembleRelease assembleDebug assembleDebugAndroidTest --no-daemon --max-workers=1
           jarsigner -verify app/build/outputs/bundle/release/app-release.aab
           keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab >/dev/null
-          cp app/build/outputs/bundle/release/app-release.aab Codex-Usage-${GITHUB_REF_NAME}.aab
-          cp app/build/outputs/apk/release/app-release.apk Codex-Usage-${GITHUB_REF_NAME}.apk
+          release_name="${GITHUB_REF_NAME//\//-}"
+          cp app/build/outputs/bundle/release/app-release.aab "Codex-Usage-${release_name}.aab"
+          cp app/build/outputs/apk/release/app-release.apk "Codex-Usage-${release_name}.apk"
 
       - name: Publish release asset
         if: startsWith(github.ref, 'refs/tags/')
@@ -70,3 +71,16 @@ jobs:
           path: |
             Codex-Usage-*.aab
             Codex-Usage-*.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-device-tests
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: app/build/test-results/

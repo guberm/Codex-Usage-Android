@@ -26,6 +26,7 @@ data class UsageSnapshot(
     val creditBalance: String?,
     val availableResetCount: Int = 0,
     val fetchedAtEpochMillis: Long = System.currentTimeMillis(),
+    val secondary: UsageWindow? = null,
 )
 
 class UsageParseException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -42,6 +43,7 @@ class UsageParser {
             return UsageSnapshot(
                 planType = root.optionalString("plan_type"),
                 primary = parseWindow(primaryWindow),
+                secondary = rateLimit.optJSONObject("secondary_window")?.let(::parseWindow),
                 additionalLimits = parseAdditional(root.optJSONArray("additional_rate_limits")),
                 creditBalance = root.optJSONObject("credits")?.optionalString("balance"),
                 availableResetCount = root.optJSONObject("rate_limit_reset_credits")

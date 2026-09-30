@@ -10,6 +10,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ComponentName
+import android.content.res.ColorStateList
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Typeface
@@ -42,6 +43,11 @@ class MainActivity : Activity() {
     private lateinit var updatedText: TextView
     private lateinit var statusText: TextView
     private lateinit var progress: ProgressBar
+    private lateinit var primaryTitleText: TextView
+    private lateinit var weeklyBalanceCard: LinearLayout
+    private lateinit var weeklyPercentText: TextView
+    private lateinit var weeklyProgress: ProgressBar
+    private lateinit var weeklyResetText: TextView
     private lateinit var additionalContainer: LinearLayout
     private lateinit var manualResetCountText: TextView
     private lateinit var useResetButton: Button
@@ -105,7 +111,7 @@ class MainActivity : Activity() {
                 contentDescription = "OpenAI Codex usage gauge"
                 adjustViewBounds = true
             },
-            LinearLayout.LayoutParams(dp(128), dp(128)).apply { gravity = Gravity.CENTER_HORIZONTAL },
+            LinearLayout.LayoutParams(dp(96), dp(96)).apply { gravity = Gravity.CENTER_HORIZONTAL },
         )
         root.addView(title("Codex Usage"))
         root.addView(
@@ -116,6 +122,12 @@ class MainActivity : Activity() {
         root.addView(spacer(18))
 
         val usageCard = card()
+        primaryTitleText = sectionTitle("Current balance").apply {
+            textSize = 16f
+            setTextColor(color(R.color.theme_accent))
+            setPadding(0, 0, 0, dp(2))
+        }
+        usageCard.addView(primaryTitleText)
         percentText = TextView(this).apply {
             text = "—"
             textSize = 48f
@@ -124,12 +136,11 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_HORIZONTAL
         }
         usageCard.addView(percentText)
-        usageCard.addView(bodyText("remaining", color(R.color.text_secondary)).apply {
-            gravity = Gravity.CENTER_HORIZONTAL
-        })
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
             progress = 0
+            progressTintList = ColorStateList.valueOf(color(R.color.theme_accent))
+            progressBackgroundTintList = ColorStateList.valueOf(color(R.color.screen_background))
         }
         usageCard.addView(
             progress,
@@ -138,7 +149,7 @@ class MainActivity : Activity() {
                 bottomMargin = dp(14)
             },
         )
-        resetText = bodyText("Reset: —", color(R.color.text_primary))
+        resetText = bodyText("Resets —", color(R.color.text_primary))
         updatedText = bodyText("Not updated yet", color(R.color.text_secondary))
         statusText = bodyText("Sign in with ChatGPT", color(R.color.theme_accent))
         usageCard.addView(resetText)
@@ -147,6 +158,52 @@ class MainActivity : Activity() {
         additionalContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         usageCard.addView(additionalContainer)
         root.addView(usageCard)
+
+        weeklyBalanceCard = card().apply {
+            val header = LinearLayout(this@MainActivity).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                orientation = LinearLayout.HORIZONTAL
+            }
+            header.addView(
+                sectionTitle("Weekly balance").apply {
+                    textSize = 18f
+                    setTextColor(color(R.color.text_primary))
+                    setPadding(0, 0, 0, 0)
+                },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            )
+            weeklyPercentText = TextView(this@MainActivity).apply {
+                text = "—"
+                textSize = 20f
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(color(R.color.theme_accent))
+            }
+            header.addView(weeklyPercentText)
+            addView(header)
+            weeklyProgress = ProgressBar(
+                this@MainActivity,
+                null,
+                android.R.attr.progressBarStyleHorizontal,
+            ).apply {
+                max = 100
+                progressTintList = ColorStateList.valueOf(color(R.color.theme_accent))
+                progressBackgroundTintList = ColorStateList.valueOf(color(R.color.screen_background))
+            }
+            addView(
+                weeklyProgress,
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(12)).apply {
+                    topMargin = dp(12)
+                },
+            )
+            weeklyResetText = bodyText("Resets —", color(R.color.text_secondary))
+            addView(weeklyResetText)
+            visibility = View.GONE
+        }
+        root.addView(
+            weeklyBalanceCard,
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                .apply { topMargin = dp(12) },
+        )
         root.addView(spacer(14))
 
         val manualResetCard = card()
@@ -296,19 +353,34 @@ class MainActivity : Activity() {
         useResetButton.isEnabled = signedIn && (snapshot?.availableResetCount ?: 0) > 0
         statusText.text = tokens?.signedInText() ?: "Sign in with ChatGPT"
         if (snapshot == null) {
+            primaryTitleText.text = "Current balance"
             percentText.text = "—"
             progress.progress = 0
-            resetText.text = "Reset: —"
+            progress.contentDescription = "No current balance"
+            resetText.text = "Resets —"
             updatedText.text = "Not updated yet"
             additionalContainer.removeAllViews()
+            weeklyBalanceCard.visibility = View.GONE
             manualResetCountText.text = "0 available"
             return
         }
+        primaryTitleText.text = UsageText.balanceTitle(snapshot.primary.windowSeconds)
         percentText.text = "${snapshot.primary.remainingPercent}%"
         progress.progress = snapshot.primary.remainingPercent
-        resetText.text = "Reset: ${UsageText.resetDate(snapshot.primary.resetAtEpochSeconds)}"
+        progress.contentDescription =
+            "${primaryTitleText.text}, ${snapshot.primary.remainingPercent}% remaining"
+        resetText.text = "Resets ${UsageText.resetDate(snapshot.primary.resetAtEpochSeconds)}"
         updatedText.text = "Updated ${UsageText.resetDate(snapshot.fetchedAtEpochMillis / 1000L)}"
         additionalContainer.removeAllViews()
+        snapshot.secondary?.let { window ->
+            weeklyBalanceCard.visibility = View.VISIBLE
+            weeklyPercentText.text = "${window.remainingPercent}% remaining"
+            weeklyProgress.progress = window.remainingPercent.coerceIn(0, 100)
+            weeklyProgress.contentDescription = "Weekly balance, ${window.remainingPercent}% remaining"
+            weeklyResetText.text = "Resets ${UsageText.resetDate(window.resetAtEpochSeconds)}"
+        } ?: run {
+            weeklyBalanceCard.visibility = View.GONE
+        }
         snapshot.additionalLimits.forEach { limit ->
             additionalContainer.addView(spacer(14))
             additionalContainer.addView(
@@ -537,8 +609,9 @@ class MainActivity : Activity() {
         setPadding(dp(18), dp(18), dp(18), dp(18))
         background = GradientDrawable().apply {
             setColor(color(R.color.surface))
-            cornerRadius = dp(8).toFloat()
+            cornerRadius = dp(16).toFloat()
         }
+        elevation = dp(2).toFloat()
     }
 
     private fun actionButton(text: String, onClick: () -> Unit): Button = Button(this).apply {

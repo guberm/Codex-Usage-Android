@@ -20,7 +20,10 @@ object MonitorDisplay {
 
     fun content(snapshot: UsageSnapshot?): String = snapshot?.let {
         val spark = it.additionalLimits.firstOrNull { limit -> limit.feature == "codex_bengalfox" }
-        spark?.let { limit -> "Spark: ${UsageText.limitSummary(limit)}" } ?: "Spark unavailable"
+        listOfNotNull(
+            it.secondary?.let(UsageText::windowSummary),
+            spark?.let { limit -> "Spark: ${UsageText.limitSummary(limit)}" } ?: "Spark unavailable",
+        ).joinToString(" · ")
     } ?: "Waiting for the first check"
 
     fun shortCriticalText(snapshot: UsageSnapshot?): String =

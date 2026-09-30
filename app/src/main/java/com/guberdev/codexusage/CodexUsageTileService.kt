@@ -79,12 +79,14 @@ class CodexUsageTileService : TileService() {
             } ?: "Codex Usage"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 subtitle = snapshot?.let {
-                    "Resets ${UsageText.shortResetDate(it.primary.resetAtEpochSeconds)}"
+                    it.secondary?.let(UsageText::windowSummary)
+                        ?: "Resets ${UsageText.shortResetDate(it.primary.resetAtEpochSeconds)}"
                 } ?: "Tap to sign in"
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 stateDescription = snapshot?.let {
-                    "${it.primary.remainingPercent}% remaining, resets ${UsageText.resetDate(it.primary.resetAtEpochSeconds)}"
+                    "${it.primary.remainingPercent}% remaining, resets ${UsageText.resetDate(it.primary.resetAtEpochSeconds)}" +
+                        (it.secondary?.let { window -> ", ${UsageText.windowSummary(window)}" } ?: "")
                 } ?: "Sign-in required"
             }
             updateTile()
