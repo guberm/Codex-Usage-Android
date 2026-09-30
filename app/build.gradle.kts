@@ -11,8 +11,8 @@ android {
         applicationId = "com.guberdev.codexusage"
         minSdk = 26
         targetSdk = 36
-        versionCode = 18
-        versionName = "0.1.17"
+        versionCode = 19
+        versionName = "0.1.18"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -55,4 +55,6 @@ kotlin {
 dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20260719")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }
