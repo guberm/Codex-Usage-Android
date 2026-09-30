@@ -35,4 +35,11 @@ class PlusWeeklyLimitTest {
             assertEquals("Reset: —", WidgetDisplay.reset(snapshot))
         }
     }
+
+    @Test
+    fun `balance titles describe the period using the available window duration`() {
+        assertEquals("5-hour balance", UsageText.balanceTitle(18_000))
+        assertEquals("Weekly balance", UsageText.balanceTitle(604_800))
+        assertEquals("Current balance", UsageText.balanceTitle(null))
+    }
 }
