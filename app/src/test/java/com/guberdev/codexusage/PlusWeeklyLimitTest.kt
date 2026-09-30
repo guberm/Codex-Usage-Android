@@ -20,8 +20,10 @@ class PlusWeeklyLimitTest {
 
         assertEquals("75%", WidgetDisplay.percent(snapshot))
         assertEquals(UsageWindow(40, 1786216700L, 604800L), snapshot.secondary)
-        assertTrue(MonitorDisplay.content(snapshot).contains("Weekly 40% left"))
-        assertTrue(WidgetDisplay.reset(snapshot).contains("Weekly 40% left"))
+        assertEquals("5h 75% · Weekly 40%", MonitorDisplay.title(snapshot))
+        assertEquals("Spark unavailable", MonitorDisplay.content(snapshot))
+        assertEquals("Weekly 40% left", WidgetDisplay.secondaryBalance(snapshot))
+        assertTrue(WidgetDisplay.reset(snapshot).startsWith("Reset:"))
     }
 
     @Test
