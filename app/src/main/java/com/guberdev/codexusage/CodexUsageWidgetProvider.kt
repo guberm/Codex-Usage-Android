@@ -13,7 +13,12 @@ object WidgetDisplay {
         snapshot?.let { "${it.primary.remainingPercent}%" } ?: "—"
 
     fun reset(snapshot: UsageSnapshot?): String =
-        snapshot?.let { "Reset: ${UsageText.shortResetDate(it.primary.resetAtEpochSeconds)}" }
+        snapshot?.let {
+            "Reset: ${UsageText.shortResetDate(it.primary.resetAtEpochSeconds)}" +
+                (it.secondary?.let { window ->
+                    "\n${UsageText.windowSummary(window)} · ${UsageText.shortResetDate(window.resetAtEpochSeconds)}"
+                } ?: "")
+        }
             ?: "Tap to sign in"
 
     fun progress(snapshot: UsageSnapshot?): Int =

@@ -309,6 +309,15 @@ class MainActivity : Activity() {
         resetText.text = "Reset: ${UsageText.resetDate(snapshot.primary.resetAtEpochSeconds)}"
         updatedText.text = "Updated ${UsageText.resetDate(snapshot.fetchedAtEpochMillis / 1000L)}"
         additionalContainer.removeAllViews()
+        snapshot.secondary?.let { window ->
+            additionalContainer.addView(spacer(14))
+            additionalContainer.addView(
+                bodyText(
+                    "${UsageText.windowSummary(window)} · resets ${UsageText.resetDate(window.resetAtEpochSeconds)}",
+                    color(R.color.text_primary),
+                ),
+            )
+        }
         snapshot.additionalLimits.forEach { limit ->
             additionalContainer.addView(spacer(14))
             additionalContainer.addView(

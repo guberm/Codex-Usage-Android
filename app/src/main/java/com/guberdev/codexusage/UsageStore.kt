@@ -51,7 +51,14 @@ class UsageStore(context: Context) {
         }.getOrDefault(emptyList())
         return UsageSnapshot(
             planType = preferences.getString(KEY_PLAN, null),
-            primary = UsageWindow(primary, reset),
+            primary = UsageWindow(primary, reset, preferences.getLong(KEY_SECONDS, -1L).takeIf { it > 0 }),
+            secondary = preferences.getInt(KEY_SECONDARY_REMAINING, -1).takeIf { it in 0..100 }?.let {
+                UsageWindow(
+                    it,
+                    preferences.getLong(KEY_SECONDARY_RESET, -1L).takeIf { value -> value > 0 },
+                    preferences.getLong(KEY_SECONDARY_SECONDS, -1L).takeIf { value -> value > 0 },
+                )
+            },
             additionalLimits = additional,
             creditBalance = preferences.getString(KEY_CREDITS, null),
             availableResetCount = preferences.getInt(KEY_AVAILABLE_RESETS, 0).coerceAtLeast(0),
@@ -93,6 +100,10 @@ class UsageStore(context: Context) {
         preferences.edit()
             .putInt(KEY_REMAINING, snapshot.primary.remainingPercent)
             .putLong(KEY_RESET, snapshot.primary.resetAtEpochSeconds ?: -1L)
+            .putLong(KEY_SECONDS, snapshot.primary.windowSeconds ?: -1L)
+            .putInt(KEY_SECONDARY_REMAINING, snapshot.secondary?.remainingPercent ?: -1)
+            .putLong(KEY_SECONDARY_RESET, snapshot.secondary?.resetAtEpochSeconds ?: -1L)
+            .putLong(KEY_SECONDARY_SECONDS, snapshot.secondary?.windowSeconds ?: -1L)
             .putString(KEY_PLAN, snapshot.planType)
             .putString(KEY_CREDITS, snapshot.creditBalance)
             .putInt(KEY_AVAILABLE_RESETS, snapshot.availableResetCount)
@@ -111,6 +122,10 @@ class UsageStore(context: Context) {
         private const val PREFS = "codex_usage_cache"
         private const val KEY_REMAINING = "remaining"
         private const val KEY_RESET = "reset"
+        private const val KEY_SECONDS = "seconds"
+        private const val KEY_SECONDARY_REMAINING = "secondary_remaining"
+        private const val KEY_SECONDARY_RESET = "secondary_reset"
+        private const val KEY_SECONDARY_SECONDS = "secondary_seconds"
         private const val KEY_PLAN = "plan"
         private const val KEY_CREDITS = "credits"
         private const val KEY_AVAILABLE_RESETS = "available_resets"
@@ -150,6 +165,9 @@ object RefreshPolicy {
 }
 
 object UsageText {
+    fun windowSummary(window: UsageWindow): String =
+        "${windowName(window.windowSeconds)} ${window.remainingPercent}% left"
+
     fun resetDate(epochSeconds: Long?): String =
         epochSeconds?.let {
             DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, Locale.ENGLISH)
