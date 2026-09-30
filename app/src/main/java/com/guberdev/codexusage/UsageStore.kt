@@ -165,6 +165,13 @@ object RefreshPolicy {
 }
 
 object UsageText {
+    fun balanceTitle(windowSeconds: Long?): String {
+        val name = windowName(windowSeconds)
+        if (name == "Limit") return "Current balance"
+        val period = if (name.endsWith("h")) "${name.dropLast(1)}-hour" else name
+        return "$period balance"
+    }
+
     fun windowSummary(window: UsageWindow): String =
         "${windowName(window.windowSeconds)} ${window.remainingPercent}% left"
 
